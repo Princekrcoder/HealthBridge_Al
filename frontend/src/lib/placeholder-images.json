@@ -1,0 +1,58 @@
+{
+    "placeholderImages": [
+        {
+            "id": "user-avatar",
+            "description": "User avatar",
+            "imageUrl": "https://images.unsplash.com/photo-1639149888905-fb39731f2e6c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwZXJzb24lMjBhdmF0YXJ8ZW58MHx8fHwxNzY5NTczMjk1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "person avatar"
+        },
+        {
+            "id": "health-records-card",
+            "description": "Illustration for health records",
+            "imageUrl": "https://images.unsplash.com/photo-1758691463569-66de91d76452?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtZWRpY2FsJTIwY2hhcnR8ZW58MHx8fHwxNzY5NTg5MDA3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "medical chart"
+        },
+        {
+            "id": "appointment-card",
+            "description": "Illustration for booking an appointment",
+            "imageUrl": "https://images.unsplash.com/photo-1734945620672-f130427acff7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxjYWxlbmRhciUyMGRvY3RvcnxlbnwwfHx8fDE3Njk2MDczODd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "calendar doctor"
+        },
+        {
+            "id": "village-tracking-map",
+            "description": "Map for village tracking",
+            "imageUrl": "https://images.unsplash.com/photo-1669696541353-0da9e1765816?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtYXAlMjB2aWxsYWdlfGVufDB8fHx8MTc2OTYwNzM4N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "map village"
+        },
+        {
+            "id": "opd-management",
+            "description": "Illustration for OPD management",
+            "imageUrl": "https://images.unsplash.com/photo-1598257923770-c6b0727fd5d2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxob3NwaXRhbCUyMGNvcnJpZG9yfGVufDB8fHx8MTc2OTU1NDE3OHww&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "hospital corridor"
+        },
+        {
+            "id": "lab-reports",
+            "description": "Illustration for lab reports",
+            "imageUrl": "https://images.unsplash.com/photo-1738778151587-032287ae9f90?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxtaWNyb3Njb3BlJTIwbGFib3JhdG9yeXxlbnwwfHx8fDE3Njk2MDczODd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "microscope laboratory"
+        },
+        {
+            "id": "referrals",
+            "description": "Illustration for referrals",
+            "imageUrl": "https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxkb2N0b3IlMjBwYXRpZW50fGVufDB8fHx8MTc2OTU2Njc2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "doctor patient"
+        },
+        {
+            "id": "admin-bg",
+            "description": "Abstract background for admin dashboard",
+            "imageUrl": "https://images.unsplash.com/photo-1690029670784-155329105e58?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxhYnN0cmFjdCUyMG5ldHdvcmt8ZW58MHx8fHwxNzY5NTI4MDE0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "abstract network"
+        },
+        {
+            "id": "admin-heatmap-india",
+            "description": "Admin dashboard heatmap of India",
+            "imageUrl": "https://images.unsplash.com/photo-1620027934338-601c74a086a6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGluZGlhJTIwbWFwfGVufDB8fHx8MTc3MDA2OTU0MXww&ixlib=rb-4.1.0&q=80&w=1080",
+            "imageHint": "abstract india map"
+        }
+    ]
+}
