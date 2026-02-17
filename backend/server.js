@@ -16,7 +16,8 @@ const roleMiddleware = require("./middleware/roleMiddleware");
 
 // Routes
 const authRoutes = require("./routes/auth");
-const dashboardRoutes = require("./routes/dashboard"); // ✅ STEP 13.2
+const dashboardRoutes = require("./routes/dashboard");
+const healthQueryRoutes = require("./routes/health-query"); // ✅ New Route
 
 // ================================
 // 3️⃣ App initialize
@@ -34,8 +35,9 @@ app.use(express.json());
 // ================================
 app.use("/api", authRoutes);
 
-// 🔹 STEP 13.2 — Dashboard routes register
+// 🔹 Dashboard routes register
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/health-query", healthQueryRoutes); // ✅ Register new route
 
 // ================================
 // 6️⃣ Test route (DB check)

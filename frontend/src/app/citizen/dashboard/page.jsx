@@ -4,11 +4,18 @@ import { useState, useEffect } from "react";
 import {
   Bell, LogOut, Languages, Mic, Camera, FileAudio, Video,
   Stethoscope, Upload, UserCircle, MapPin, AlertTriangle,
-  HeartPulse, ChevronRight, Download, Siren, Loader
+  HeartPulse, ChevronRight, Download, Siren, Loader, Send, Loader2, AlertCircle, ImagePlus
 } from "lucide-react";
 
 // UI Components
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ToastAction } from "@/components/ui/toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 
 // Utils & Hooks
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useToast } from "@/hooks/use-toast";
@@ -29,8 +37,9 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useLanguage } from "@/hooks/useLanguage";
 
 // AI & API
-import { analyzeSymptomsForAsha } from "@/ai/flows/asha-symptom-analyzer";
-import { fetchDashboardData } from "@/lib/api";
+// AI & API
+import { fetchDashboardData, fetchDashboardSummary } from "@/lib/api";
+import { MedicalLoader } from "@/components/ui/medical-loader";
 
 /* ========================================
    🔹 HEADER COMPONENT
@@ -43,12 +52,21 @@ const CitizenDashboardHeader = ({ userName = "Prince", t }) => {
       <div className="container mx-auto flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
         {/* Logo Section */}
         <div className="flex gap-6 md:gap-10">
-          <Link href="/" className="flex items-center space-x-2">
-            <svg className="h-7 w-7 text-primary" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M50 15L85 32.5V67.5L50 85L15 67.5V32.5L50 15Z" fill="currentColor" />
-              <path d="M50 40V60M40 50H60" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="inline-block font-bold text-lg">{t("appTitle")}</span>
+          <Link href="/" className="flex items-center gap-3 group/brand">
+            <div className="relative w-12 h-12 flex-shrink-0">
+              <Image
+                src="/icon.png"
+                alt="HealthBridge AI Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-lg tracking-tighter text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text">
+                HealthBridge AI
+              </span>
+            </div>
           </Link>
         </div>
 
@@ -136,12 +154,24 @@ const symptomTags = [
   "Diarrhea", "Body Pain", "Chest Pain", "Breathing Difficulty"
 ];
 
-const AIHealthQuery = ({ setResult, onVoiceClick, userAge = 35, userGender = 'M', t }) => {
+const AIHealthQuery = ({ setResult, onVoiceClick, userAge = 35, userGender = 'M', t, vitals, isDiabetic, onSuccess }) => {
   const [symptoms, setSymptoms] = useState("");
   const [severity, setSeverity] = useState([5]);
   const [duration, setDuration] = useState("");
+  const [files, setFiles] = useState([]); // 📂 File State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFiles(prev => [...prev, ...Array.from(e.target.files)]);
+      toast({ title: "File Added", description: `${e.target.files.length} file(s) selected.` });
+    }
+  };
+
+  const removeFile = (index) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -159,40 +189,155 @@ const AIHealthQuery = ({ setResult, onVoiceClick, userAge = 35, userGender = 'M'
     setResult(null);
 
     try {
-      const result = await analyzeSymptomsForAsha({
-        patientProfile: {
-          age: userAge,
-          gender: userGender,
+      // 1️⃣  Prepare For Submission (Unified)
+      const formData = new FormData();
+      formData.append("symptoms", symptoms);
+      formData.append("duration", duration);
+      formData.append("severity", severity[0].toString());
+
+      // Append Vitals
+      if (vitals.temperature) formData.append("temperature", vitals.temperature);
+      if (vitals.spo2) formData.append("spo2", vitals.spo2);
+      if (vitals.bp) formData.append("bp", vitals.bp);
+      if (vitals.sugar) formData.append("sugar", vitals.sugar);
+      formData.append("is_diabetic", isDiabetic.toString());
+
+      // Append Files
+      files.forEach(file => {
+        formData.append("files", file);
+      });
+
+      // 2️⃣  Submit to Backend (AI Logic is now here)
+      const saveResponse = await fetch("http://localhost:5000/api/health-query", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
         },
-        currentSymptoms: symptoms,
+        body: formData,
       });
 
-      setResult(result);
+      if (!saveResponse.ok) throw new Error("Failed to submit query");
 
-      toast({
-        title: "Analysis Complete",
-        description: "Your symptoms have been analyzed successfully.",
-      });
-    } catch (error) {
-      console.error("❌ AI Analysis failed:", error);
+      const responseData = await saveResponse.json();
 
-      let description = "Could not get a response from the AI. Please try again later.";
+      // 3️⃣  Update UI with Backend Response
+      if (responseData.status === "success") {
+        setResult(responseData); // Set the full structured response
 
-      if (error instanceof Error) {
-        if (error.message.includes("429")) {
-          description = "You have exceeded the request limit. Please wait and try again.";
-        } else if (error.message.includes("network")) {
-          description = "Network error. Please check your connection.";
-        }
+        toast({
+          title: responseData.user_message?.title || "Query Submitted",
+          description: responseData.user_message?.description || "Your health query has been processed.",
+        });
+
+        // Clear inputs on success
+        setFiles([]);
+        setSymptoms("");
+        if (onSuccess) onSuccess(); // Refresh History
+      } else {
+        throw new Error(responseData.message || "Submission failed");
       }
 
+    } catch (error) {
+      console.error("❌ Process failed:", error);
       toast({
         variant: "destructive",
-        title: "AI Analysis Failed",
-        description,
+        title: "Error",
+        description: "An error occurred while processing your request. Please try again.",
       });
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const [isListening, setIsListening] = useState(false);
+
+  // 🎤 Speech to Text Logic
+  const startVoiceTyping = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast({
+        variant: "destructive",
+        title: "Not Supported",
+        description: "Voice typing is not supported in this browser. Please use Chrome or Edge.",
+      });
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US'; // Default to English, can be dynamic
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      // Start listening
+      setIsListening(true);
+      toast({
+        title: "Listening...",
+        description: "Please speak your symptoms clearly.",
+      });
+
+      recognition.onresult = (event) => {
+        const speechResult = event.results[0][0].transcript;
+        if (speechResult) {
+          setSymptoms((prev) => (prev ? `${prev} ${speechResult}` : speechResult));
+          toast({
+            title: "Heard!",
+            description: `Added: "${speechResult}"`,
+          });
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event) => {
+        // Log to console but avoid alert-like errors for known issues
+        if (event.error !== 'no-speech') {
+          console.warn("Speech recognition error:", event.error);
+        }
+
+        setIsListening(false);
+
+        let errorMessage = `Voice error: ${event.error}`;
+        let errorTitle = "Voice Recognition Error";
+
+        switch (event.error) {
+          case 'network':
+            errorMessage = "Voice typing unavailable. Please check your network connection.";
+            errorTitle = "Network Error";
+            break;
+          case 'not-allowed':
+          case 'service-not-allowed':
+            errorMessage = "Microphone access denied. Please click the lock icon in your address bar to allow microphone access.";
+            errorTitle = "Permission Denied";
+            break;
+          case 'no-speech':
+            // Don't show toast for no-speech, just stop listening smoothly
+            return;
+          case 'audio-capture':
+            errorMessage = "No microphone was found. Ensure that a microphone is installed and that microphone settings are configured correctly.";
+            errorTitle = "Microphone Not Found";
+            break;
+        }
+
+        toast({
+          variant: "destructive",
+          title: errorTitle,
+          description: errorMessage,
+        });
+      };
+
+      recognition.start();
+    } catch (error) {
+      console.error("Speech recognition start error", error);
+      setIsListening(false);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not start voice recognition.",
+      });
     }
   };
 
@@ -223,44 +368,126 @@ const AIHealthQuery = ({ setResult, onVoiceClick, userAge = 35, userGender = 'M'
           />
 
           {/* Media Upload Buttons */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Record Voice"
-              onClick={onVoiceClick}
-              disabled={isAnalyzing}
-            >
-              <Mic className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Upload Photo"
-              disabled={isAnalyzing}
-            >
-              <Camera className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Upload Audio"
-              disabled={isAnalyzing}
-            >
-              <FileAudio className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Upload Video"
-              disabled={isAnalyzing}
-            >
-              <Video className="h-4 w-4" />
-            </Button>
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+
+              {/* Audio Input - Voice Typing ONLY */}
+              <Button
+                type="button"
+                variant={isListening ? "destructive" : "outline"}
+                size="icon"
+                disabled={isAnalyzing}
+                onClick={startVoiceTyping}
+                className={isListening ? "animate-pulse" : ""}
+                title="Voice Typing"
+              >
+                {isListening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+              </Button>
+
+              {/* Camera/Image Input */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" size="icon" disabled={isAnalyzing} title="Image">
+                    <Camera className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => document.getElementById('image-capture').click()}>
+                    <Camera className="mr-2 h-4 w-4" /> Take Photo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => document.getElementById('image-upload').click()}>
+                    <ImagePlus className="mr-2 h-4 w-4" /> Upload Image
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <input
+                type="file"
+                id="image-capture"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <input
+                type="file"
+                id="image-upload"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+
+              {/* Video Input */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" size="icon" disabled={isAnalyzing} title="Video">
+                    <Video className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => document.getElementById('video-capture').click()}>
+                    <Video className="mr-2 h-4 w-4" /> Record Video
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => document.getElementById('video-upload').click()}>
+                    <Upload className="mr-2 h-4 w-4" /> Upload Video
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <input
+                type="file"
+                id="video-capture"
+                accept="video/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <input
+                type="file"
+                id="video-upload"
+                accept="video/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+
+              {/* General File Upload (PDF/Docs) */}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled={isAnalyzing}
+                onClick={() => document.getElementById('general-upload').click()}
+                title="Attach Report/PDF"
+              >
+                <Upload className="h-4 w-4" />
+              </Button>
+              <input
+                type="file"
+                id="general-upload"
+                accept=".pdf,.doc,.docx,.jpg,.png,.jpeg"
+                className="hidden"
+                onChange={handleFileChange}
+                multiple
+              />
+            </div>
+
+            {/* 📂 Selected Files List */}
+            {files.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {files.map((file, index) => (
+                  <Badge key={index} variant="secondary" className="flex items-center gap-1 py-1 px-2">
+                    <span className="max-w-[150px] truncate">{file.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 ml-1 hover:bg-destructive/20 rounded-full"
+                      onClick={() => removeFile(index)}
+                    >
+                      <LogOut className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
 
@@ -419,37 +646,7 @@ const QuickActions = ({ t }) => {
 /* ========================================
    🔹 VITALS INPUT COMPONENT
    ======================================== */
-const VitalsCard = ({ t }) => {
-  const [vitals, setVitals] = useState({
-    temperature: "",
-    spo2: "",
-    bp: "",
-    sugar: "",
-  });
-  const [isDiabetic, setIsDiabetic] = useState(false);
-  const { toast } = useToast();
-
-  const handleVitalsSubmit = () => {
-    // Validation
-    if (!vitals.temperature && !vitals.spo2 && !vitals.bp) {
-      toast({
-        variant: "destructive",
-        title: "Missing Data",
-        description: "Please enter at least one vital sign.",
-      });
-      return;
-    }
-
-    // TODO: API call to save vitals
-    toast({
-      title: "Vitals Saved",
-      description: "Your vital signs have been recorded successfully.",
-    });
-
-    // Reset form
-    setVitals({ temperature: "", spo2: "", bp: "", sugar: "" });
-  };
-
+const VitalsCard = ({ t, vitals, setVitals, isDiabetic, setIsDiabetic }) => {
   return (
     <Card>
       <CardHeader>
@@ -522,11 +719,6 @@ const VitalsCard = ({ t }) => {
           </div>
         )}
       </CardContent>
-      <CardFooter>
-        <Button className="w-full" onClick={handleVitalsSubmit}>
-          {t("dashboard.addVitals")}
-        </Button>
-      </CardFooter>
     </Card>
   );
 };
@@ -534,74 +726,75 @@ const VitalsCard = ({ t }) => {
 /* ========================================
    🔹 AI RESULT DISPLAY COMPONENT
    ======================================== */
+/* ========================================
+   🔹 AI RESULT DISPLAY COMPONENT
+   ======================================== */
 const AIResult = ({ result }) => {
   if (!result) return null;
 
+  // Don't show AI details for Manual analysis
+  if (result.analysis_type === 'MANUAL') {
+    return (
+      <Card className="border-l-4 border-blue-500 bg-blue-50/50">
+        <CardContent className="pt-6">
+          <h4 className="font-semibold text-lg text-blue-700 mb-2">{result.user_message?.title}</h4>
+          <p className="text-muted-foreground">{result.user_message?.description}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const riskVariant = {
-    Low: "secondary",
-    Medium: "default",
-    High: "destructive",
+    LOW: "secondary",
+    MEDIUM: "default",
+    HIGH: "destructive",
+    UNKNOWN: "outline"
   };
 
+  const isEmergency = result.action === 'VISIT_ASHA_IMMEDIATELY';
+
   return (
-    <Card>
+    <Card className={cn(isEmergency && "border-destructive/50 shadow-destructive/20")}>
       <CardHeader>
         <CardTitle className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <span>AI Analysis Result</span>
-          <Badge variant={riskVariant[result.risk] || 'default'}>
-            Risk Level: {result.risk}
+          <span>Health Analysis</span>
+          <Badge variant={riskVariant[result.risk_level] || 'outline'}>
+            Risk: {result.risk_level}
           </Badge>
         </CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* AI Statement */}
-        <div className="p-4 rounded-lg bg-primary/5 border-l-4 border-primary">
-          <h4 className="font-semibold mb-2 text-primary">AI Statement</h4>
-          <p className="italic text-foreground">&quot;{result.statement}&quot;</p>
+        {/* User Message */}
+        <div className={cn(
+          "p-4 rounded-lg border-l-4",
+          isEmergency ? "bg-destructive/10 border-destructive text-destructive-foreground" : "bg-primary/5 border-primary"
+        )}>
+          <h4 className={cn("font-semibold mb-2", isEmergency ? "text-destructive" : "text-primary")}>
+            {result.user_message?.title}
+          </h4>
+          <p className="text-foreground">{result.user_message?.description}</p>
         </div>
 
-        {/* Potential Condition */}
-        <div>
-          <h4 className="font-semibold mb-2">Potential Condition</h4>
-          <p className="text-muted-foreground">{result.potentialCondition}</p>
-        </div>
-
-        <Separator />
-
-        {/* Reasoning */}
-        <div>
-          <h4 className="font-semibold mb-2">Reasoning</h4>
-          <p className="text-sm text-muted-foreground">{result.reasoning}</p>
-        </div>
-
-        {/* High Risk Warning */}
-        {result.risk === 'High' && (
-          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-destructive">
-                  Emergency Action Recommended
-                </h4>
-                <p className="text-sm text-destructive/90">
-                  Your symptoms indicate a high-risk situation. Please contact your
-                  local ASHA worker or visit the nearest PHC immediately.
-                </p>
-              </div>
-            </div>
+        {/* Action Callout */}
+        {isEmergency && (
+          <div className="flex items-center gap-3 p-3 text-destructive font-medium bg-destructive/10 rounded-md">
+            <Siren className="w-5 h-5 animate-pulse" />
+            <span>Immediate Medical Attention Required</span>
           </div>
         )}
+
+        <div className="text-xs text-muted-foreground mt-2">
+          Case API ID: {result.case_id}
+        </div>
+
       </CardContent>
 
-      {/* Emergency Actions */}
-      {result.risk === 'High' && (
+      {/* High Risk Footer Actions */}
+      {result.risk_level === 'HIGH' && (
         <CardFooter className="flex-col sm:flex-row gap-2 pt-4 border-t">
-          <Button
-            variant="destructive"
-            className="w-full sm:w-auto flex items-center gap-2"
-          >
-            <Siren /> Request ASHA Help
+          <Button variant="destructive" className="w-full sm:w-auto flex items-center gap-2">
+            <Siren className="w-4 h-4" /> Request ASHA Help
           </Button>
           <Button variant="outline" className="w-full sm:w-auto">
             Send Summary to PHC
@@ -615,78 +808,238 @@ const AIResult = ({ result }) => {
 /* ========================================
    🔹 VISIT HISTORY COMPONENT
    ======================================== */
-const VisitHistory = ({ t }) => {
-  const history = [
-    {
-      date: "2024-07-20 10:30 AM",
-      symptoms: "Fever, Cough",
-      risk: "Low",
-      diagnosis: "Common Cold"
-    },
-    {
-      date: "2024-06-15 03:00 PM",
-      symptoms: "Headache, Fatigue",
-      risk: "Low",
-      diagnosis: "Stress-related"
-    },
-    {
-      date: "2024-05-28 09:00 AM",
-      symptoms: "Stomach Pain",
-      risk: "Medium",
-      diagnosis: "Gastritis"
-    },
-  ];
+/* ========================================
+   🔹 HISTORY DETAILS MODAL
+   ======================================== */
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+const HistoryDetailsModal = ({ isOpen, onClose, data }) => {
+  if (!data) return null;
+
+  const { symptoms, ai_response, files, created_at, analysis_type } = data;
+  const aiData = ai_response || {};
+  const isManual = analysis_type === 'MANUAL';
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            Health Query Details
+            <Badge variant="outline" className="ml-2">
+              {new Date(created_at).toLocaleDateString()}
+            </Badge>
+          </DialogTitle>
+          <DialogDescription>
+            Reference ID: {aiData.case_id || "N/A"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* 1. Symptoms Section */}
+          <div>
+            <h4 className="font-semibold mb-2 flex items-center gap-2">
+              <Stethoscope className="w-4 h-4 text-primary" /> Symptoms & Observation
+            </h4>
+            <div className="p-3 bg-secondary/30 rounded-md text-sm">
+              {symptoms || "No symptoms described."}
+            </div>
+          </div>
+
+          {/* 2. Analysis Section */}
+          <div>
+            <h4 className="font-semibold mb-2 flex items-center gap-2">
+              <HeartPulse className="w-4 h-4 text-primary" /> Analysis Result
+            </h4>
+            {isManual ? (
+              <div className="p-4 border-l-4 border-blue-500 bg-blue-50 rounded-r-md">
+                <p className="font-medium text-blue-700">Manual Review Required</p>
+                <p className="text-sm text-blue-600 mt-1">
+                  This query contains only media files. A medical professional will review it shortly.
+                </p>
+              </div>
+            ) : (
+              <div className={cn(
+                "p-4 border-l-4 rounded-r-md",
+                aiData.risk_level === 'HIGH' ? "border-destructive bg-destructive/10" : "border-primary bg-primary/5"
+              )}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-bold">{aiData.user_message?.title}</span>
+                  <Badge variant={aiData.risk_level === 'HIGH' ? "destructive" : "secondary"}>
+                    {aiData.risk_level} RISK
+                  </Badge>
+                </div>
+                <p className="text-sm mb-2">{aiData.user_message?.description}</p>
+
+                {aiData.action === 'VISIT_ASHA_IMMEDIATELY' && (
+                  <div className="flex items-center gap-2 text-destructive font-bold text-sm mt-3">
+                    <Siren className="w-4 h-4 animate-pulse" />
+                    PLEASE VISIT ASHA WORKER IMMEDIATELY
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 3. Attachments Section */}
+          {files && files.length > 0 && (
+            <div>
+              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-primary" /> Attachments ({files.length})
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {files.map((file, idx) => (
+                  <Card key={idx} className="overflow-hidden border group">
+                    <div className="aspect-video relative bg-black/5 flex items-center justify-center">
+                      {/* Image Preview */}
+                      {file.type.startsWith('image/') ? (
+                        <div className="relative w-full h-full">
+                          <Image
+                            src={file.url}
+                            alt={`Attachment ${idx + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : file.type.startsWith('video/') ? (
+                        <video
+                          src={file.url}
+                          controls
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center text-muted-foreground p-4">
+                          <FileAudio className="w-10 h-10 mb-2" />
+                          <span className="text-xs uppercase">{file.type.split('/')[1] || 'FILE'}</span>
+                        </div>
+                      )}
+                    </div>
+                    <CardFooter className="p-2 bg-secondary/20 flex justify-between items-center">
+                      <span className="text-xs truncate max-w-[150px]">{file.name}</span>
+                      <Button variant="ghost" size="icon" asChild title="Download">
+                        <a href={file.url} target="_blank" rel="noopener noreferrer" download>
+                          <Download className="w-4 h-4" />
+                        </a>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/* ========================================
+   🔹 VISIT HISTORY COMPONENT
+   ======================================== */
+const VisitHistory = ({ t, refreshKey }) => {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState(null); // For Modal
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:5000/api/health-query/history", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setHistory(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch history:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [refreshKey]);
 
   const riskVariant = {
-    Low: "secondary",
-    Medium: "default",
-    High: "destructive"
+    LOW: "secondary",
+    MEDIUM: "default",
+    HIGH: "destructive",
+    UNKNOWN: "outline"
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("dashboard.visitHistory")}</CardTitle>
-        <CardDescription>{t("dashboard.yourLast5Consultations")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {history.map((item, index) => (
-          <div
-            key={index}
-            className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border bg-secondary/50 hover:bg-secondary/70 transition-colors"
-          >
-            <div className="flex-1 mb-2 sm:mb-0">
-              <p className="font-semibold">{item.symptoms}</p>
-              <p className="text-xs text-muted-foreground">{item.date}</p>
-              {item.diagnosis && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Diagnosis: {item.diagnosis}
-                </p>
-              )}
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("dashboard.visitHistory")}</CardTitle>
+          <CardDescription>{t("dashboard.yourLast5Consultations")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="flex justify-center p-4">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Badge variant={riskVariant[item.risk] || 'default'}>
-                {item.risk} Risk
-              </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-2 h-auto"
-              >
-                View <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Download Summary"
-              >
-                <Download className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+          ) : history.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">No history records found.</p>
+          ) : (
+            history.map((item, index) => {
+              const aiResponse = item.ai_response || {};
+              const risk = aiResponse.risk_level || "UNKNOWN"; // Updated field name
+
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border bg-secondary/50 hover:bg-secondary/70 transition-colors"
+                >
+                  <div className="flex-1 mb-2 sm:mb-0">
+                    <p className="font-semibold line-clamp-1">{item.symptoms || "Media Attachment Only"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(item.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    <Badge variant={riskVariant[risk] || 'default'}>
+                      {risk}
+                    </Badge>
+
+                    {/* View Details Button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-2 h-auto"
+                      onClick={() => setSelectedItem(item)}
+                    >
+                      View <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Detail Modal */}
+      <HistoryDetailsModal
+        isOpen={!!selectedItem}
+        onClose={() => setSelectedItem(null)}
+        data={selectedItem}
+      />
+    </>
   );
 };
 
@@ -749,12 +1102,31 @@ export default function CitizenDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  // 🏥 Vitals State (Lifted for unified submission)
+  const [vitals, setVitals] = useState({
+    temperature: "",
+    spo2: "",
+    bp: "",
+    sugar: "",
+  });
+  const [isDiabetic, setIsDiabetic] = useState(false);
+
+  // 🔄 History Refresh Trigger
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const refreshHistory = () => setHistoryRefreshKey(prev => prev + 1);
+
   // 📥 Fetch Dashboard Data on Mount
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const data = await fetchDashboardData("citizen");
-        setDashboardData(data);
+        // Parallel fetch for efficiency
+        const [data, summary] = await Promise.all([
+          fetchDashboardData("citizen"),
+          fetchDashboardSummary()
+        ]);
+
+        // Merge data: summary has { name, lastCheck }, data has { citizen_name, ... }
+        setDashboardData({ ...data, ...summary });
       } catch (error) {
         console.error("❌ Failed to fetch dashboard data:", error);
         toast({
@@ -780,11 +1152,7 @@ export default function CitizenDashboard() {
 
   // 🔄 Loading State
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <MedicalLoader />;
   }
 
   return (
@@ -800,7 +1168,17 @@ export default function CitizenDashboard() {
             <div className="lg:col-span-3 space-y-6">
               <WelcomeCard
                 userName={dashboardData?.name || "Prince"}
-                lastCheckIn={dashboardData?.lastCheckIn}
+                lastCheckIn={
+                  dashboardData?.lastCheck
+                    ? new Date(dashboardData.lastCheck).toLocaleString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                    : null
+                }
                 t={t}
               />
 
@@ -811,18 +1189,27 @@ export default function CitizenDashboard() {
                   userAge={dashboardData?.age || 35}
                   userGender={dashboardData?.gender || 'M'}
                   t={t}
+                  vitals={vitals}
+                  isDiabetic={isDiabetic}
+                  onSuccess={refreshHistory}
                 />
               </div>
 
               {aiResult && <AIResult result={aiResult} />}
 
-              <VisitHistory t={t} />
+              <VisitHistory t={t} refreshKey={historyRefreshKey} />
             </div>
 
             {/* Right Column - Quick Access */}
             <div className="lg:col-span-2 space-y-6">
               <QuickActions t={t} />
-              <VitalsCard t={t} />
+              <VitalsCard
+                t={t}
+                vitals={vitals}
+                setVitals={setVitals}
+                isDiabetic={isDiabetic}
+                setIsDiabetic={setIsDiabetic}
+              />
               <HealthTips t={t} />
             </div>
           </div>

@@ -1,15 +1,17 @@
+
 "use client";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
+import { MedicalLoader } from "@/components/ui/medical-loader";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { roles, roleRoutes, roleDisplayNames } from "@/lib/types";
+import { roles, roleRoutes, roleDisplayNames, frontendRoles } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { setToken, setRole } from "@/lib/auth";
 import { getTranslation } from "@/lib/translations"; // 👈 Added import
@@ -21,6 +23,7 @@ const formSchema = z.object({
 export function LoginModal({ open, onOpenChange, role }) {
   const router = useRouter();
   const { toast } = useToast();
+  const [isRedirecting, setIsRedirecting] = useState(false); // 👈 New state for redirect loader
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -60,21 +63,22 @@ export function LoginModal({ open, onOpenChange, role }) {
       // Success
       setToken(data.token);
 
-      // Backend returns role in user object. 
-      // Ensure specific role mapping if backend role names differ from frontend
-      // For now using data.user.role directly
-      setRole(data.user.role);
+      // Backend returns role in user object (e.g., "asha", "citizen").
+      // Convert to frontend display name (e.g., "ASHA Worker", "Citizen")
+      const backendRole = data.user.role;
+      const displayRole = frontendRoles[backendRole] || backendRole;
+      setRole(displayRole);
 
       toast({
         title: "Login Successful",
-        description: `Redirecting to ${roleDisplayNames[values.role]} dashboard...`,
+        description: `Redirecting to ${roleDisplayNames[displayRole] || displayRole} dashboard...`,
       });
 
-      // Navigate based on SELECTED role (assuming user has that role)
-      // Or we should navigate based on ACTUAL role from backend?
-      // For now, respecting the flow where user selects role first.
+      setIsRedirecting(true); // 👈 Show loader immediately
 
-      const path = roleRoutes[values.role];
+      // ⚠️ IMPORTANT: Navigate based on ACTUAL role from backend, not selected role
+      // This prevents errors when user selects wrong role but enters valid credentials
+      const path = roleRoutes[displayRole];
       router.push(path);
 
     } catch (error) {
@@ -99,10 +103,19 @@ export function LoginModal({ open, onOpenChange, role }) {
 
   const t = (key) => getTranslation(language, key);
 
+  // 🔴 Show Medical Loader if redirecting
+  if (isRedirecting) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-background">
+        <MedicalLoader />
+      </div>
+    );
+  }
+
   return (<Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="max-w-4xl p-0 rounded-[30px] grid md:grid-cols-2 overflow-hidden">
       <div className="hidden md:flex flex-col justify-center p-12 bg-gradient-to-br from-gray-900 to-primary/90 text-white">
-        <h2 className="text-3xl font-bold">{t(`roles.${role}`) || roleDisplayNames[role]} Login</h2>
+        <h2 className="text-3xl font-bold">{t(`roles.${role} `) || roleDisplayNames[role]} Login</h2>
         <p className="mt-4 text-white/80">{t("login.privacyText")}</p>
         <div className="mt-8 text-xs font-bold tracking-widest text-accent uppercase">
           ● {t("login.secureServer")}
@@ -122,13 +135,13 @@ export function LoginModal({ open, onOpenChange, role }) {
                 <FormControl>
                   <SelectTrigger className="py-6 rounded-xl border-2 focus:border-primary focus:bg-white focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.1)] disabled:opacity-100 disabled:text-black">
                     <SelectValue placeholder="Select a role">
-                      {t(`roles.${field.value}`) || roleDisplayNames[field.value]}
+                      {t(`roles.${field.value} `) || roleDisplayNames[field.value]}
                     </SelectValue>
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
                   {roles.map((r) => (<SelectItem key={r} value={r}>
-                    {t(`roles.${r}`) || roleDisplayNames[r]}
+                    {t(`roles.${r} `) || roleDisplayNames[r]}
                   </SelectItem>))}
                 </SelectContent>
               </Select>

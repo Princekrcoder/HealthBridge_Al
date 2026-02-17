@@ -63,13 +63,25 @@ export default function AdminDashboard() {
     return (<div className="flex min-h-screen w-full bg-secondary/30">
         {/* Sidebar Navigation */}
         <aside className="hidden w-64 flex-col border-r bg-background p-4 sm:flex">
-            <div className="flex items-center gap-2 mb-8">
-                <Link href="/" className="flex items-center space-x-2">
-                    <svg className="h-8 w-8 text-primary" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M50 15L85 32.5V67.5L50 85L15 67.5V32.5L50 15Z" fill="currentColor" />
-                        <path d="M50 40V60M40 50H60" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span className="inline-block font-bold text-lg">{t("appTitle")}</span>
+            <div className="flex items-center gap-2 mb-8 px-2">
+                <Link href="/" className="flex items-center gap-3 group/brand">
+                    <div className="relative">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-primary to-cyan-500 rounded-xl blur opacity-25 group-hover/brand:opacity-75 transition duration-500"></div>
+                        <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-white/50 shadow-sm overflow-hidden p-1.5 ring-1 ring-black/5">
+                            <Image
+                                src="/icon.png"
+                                alt="HealthBridge AI Logo"
+                                fill
+                                className="object-contain"
+                                priority
+                            />
+                        </div>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-black text-lg tracking-tighter text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text">
+                            HealthBridge AI
+                        </span>
+                    </div>
                 </Link>
             </div>
             <nav className="flex flex-col gap-2 flex-1">

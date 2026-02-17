@@ -5,6 +5,42 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
+
+/**
+ * GET /api/dashboard/summary
+ * Returns { name, lastCheck }
+ * Accessible by any authenticated user (mostly for Citizen)
+ */
+router.get("/summary", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // ...
+
+    // 1. Get User Name
+    const userRes = await pool.query("SELECT name FROM users WHERE id = $1", [
+      userId,
+    ]);
+    const userName = userRes.rows[0]?.name || "User";
+
+    // 2. Get Last Check Date (from symptom_queries)
+    // Assuming 'created_at' is the timestamp
+    const checkRes = await pool.query(
+      "SELECT created_at FROM symptom_queries WHERE citizen_id = $1 ORDER BY created_at DESC LIMIT 1",
+      [userId]
+    );
+
+    const lastCheck = checkRes.rows[0]?.created_at || null;
+
+    res.json({
+      name: userName,
+      lastCheck: lastCheck,
+    });
+  } catch (err) {
+    console.error("SUMMARY ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 /**
  * CITIZEN DASHBOARD
  * citizen → uski ASHA + doctor info

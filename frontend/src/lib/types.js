@@ -1,4 +1,25 @@
 export const roles = ["Citizen", "ASHA Worker", "Sub-Center", "Doctor", "Clinical", "Admin"];
+
+// Backend role names (from database) - lowercase
+export const backendRoles = {
+    Citizen: "citizen",
+    "ASHA Worker": "asha",
+    "Sub-Center": "sub-center",
+    Doctor: "doctor",
+    Clinical: "clinical",
+    Admin: "admin",
+};
+
+// Reverse mapping: backend -> frontend display names
+export const frontendRoles = {
+    citizen: "Citizen",
+    asha: "ASHA Worker",
+    "sub-center": "Sub-Center",
+    doctor: "Doctor",
+    clinical: "Clinical",
+    admin: "Admin",
+};
+
 export const roleDisplayNames = {
     Citizen: "Citizen Portal",
     "ASHA Worker": "ASHA Worker",
@@ -7,6 +28,7 @@ export const roleDisplayNames = {
     Clinical: "Clinical Login",
     Admin: "Admin / Govt",
 };
+
 export const roleDescriptions = {
     Citizen: "Access AI symptom checker, book appointments, and view your health records instantly.",
     "ASHA Worker": "Manage village health tracking, immunization schedules, and maternal care visits.",
@@ -15,6 +37,7 @@ export const roleDescriptions = {
     Clinical: "OPD management, laboratory reports, and smart referral systems for PHC/CHC.",
     Admin: "Real-time analytics, infrastructure monitoring, and system-wide audit logs.",
 };
+
 export const roleRoutes = {
     Citizen: "/citizen/dashboard",
     "ASHA Worker": "/asha/dashboard",

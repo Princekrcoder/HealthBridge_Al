@@ -20,7 +20,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, } from "@
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { analyzeSymptomsForAsha } from "@/ai/flows/asha-symptom-analyzer";
+import { analyzeSymptoms as analyzeSymptomsForAsha } from "@/lib/analyze-client";
 
 const referralsData = [
     {

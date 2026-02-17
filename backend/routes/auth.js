@@ -20,7 +20,7 @@ router.post("/login", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ message: "User not found" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const user = result.rows[0];
@@ -28,7 +28,7 @@ router.post("/login", async (req, res) => {
     // 2️⃣ password check
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid password" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
     // 3️⃣ JWT token banao

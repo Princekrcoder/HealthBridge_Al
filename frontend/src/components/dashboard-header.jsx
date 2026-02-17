@@ -1,7 +1,9 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image"; // 👈 Added Image import
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, Settings, User } from "lucide-react";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -11,19 +13,33 @@ export default function DashboardHeader({ role }) {
   const userAvatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
   const { t } = useLanguage();
 
-  return (<header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-lg px-4 md:px-6">
-    <Link href="/" className="text-2xl font-bold text-primary flex items-center gap-2">
-      <svg className="h-6 w-6" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 15L85 32.5V67.5L50 85L15 67.5V32.5L50 15Z" fill="currentColor" />
-        <path d="M50 40V60M40 50H60" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      {t("appTitle")}
-    </Link>
-    <div className="ml-4 hidden md:block">
-      <span className="text-sm font-medium text-muted-foreground">/</span>
-      <span className="ml-2 text-sm font-semibold text-foreground">
-        {t(`roles.${role}`) || role}
-      </span>
+  return (<header className="sticky top-0 z-30 flex h-auto py-4 items-center gap-4 border-b bg-background/80 backdrop-blur-lg px-4 md:px-6">
+    <div className="flex gap-6 md:gap-10">
+      <Link href="/" className="flex items-center gap-3 group/brand">
+        <div className="relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary to-cyan-500 rounded-xl blur opacity-25 group-hover/brand:opacity-75 transition duration-500"></div>
+          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-white/50 shadow-sm overflow-hidden p-1.5 ring-1 ring-black/5">
+            <Image
+              src="/icon.png"
+              alt="HealthBridge AI Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
+        <div className="flex flex-col">
+          <span className="font-black text-lg tracking-tighter text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text">
+            HealthBridge AI
+          </span>
+        </div>
+      </Link>
+      {role && (
+        <Badge variant="secondary" className="hidden md:flex h-7 items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          {role} Dashboard
+        </Badge>
+      )}
     </div>
     <div className="ml-auto flex items-center gap-4">
       <DropdownMenu>

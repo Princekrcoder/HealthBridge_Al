@@ -36,6 +36,12 @@ const nextConfig = {
                 port: '',
                 pathname: '/**',
             },
+            {
+                protocol: 'https',
+                hostname: 'healthbridge-medical-reports.s3.eu-north-1.amazonaws.com',
+                port: '',
+                pathname: '/**',
+            },
         ],
     },
 };

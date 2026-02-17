@@ -72,3 +72,14 @@
       );
   }
 }
+
+@layer utilities {
+  .w-20 {
+    width: 15rem;
+  }
+  
+  .h-20 {
+    height: 7rem;
+  }
+}
+

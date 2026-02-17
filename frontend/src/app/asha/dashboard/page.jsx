@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { fetchDashboardData } from "@/lib/api"; // 👈 API IMPORT ADDED
+import { fetchDashboardData } from "@/lib/api";
+import { MedicalLoader } from "@/components/ui/medical-loader";
 import DashboardHeader from "@/components/dashboard-header";
 
 // UI Components
@@ -23,49 +24,49 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
 // Icons
-import { 
-  Users, ClipboardList, HeartPulse, Bell, Truck, Search, 
-  Filter, MoreHorizontal, PhoneCall, Send, Plus, Edit, 
-  BarChart2, Pill, BookMarked, AlertTriangle, History, 
-  BrainCircuit, FileText, Loader, UserCircle 
+import {
+  Users, ClipboardList, HeartPulse, Bell, Truck, Search,
+  Filter, MoreHorizontal, PhoneCall, Send, Plus, Edit,
+  BarChart2, Pill, BookMarked, AlertTriangle, History,
+  BrainCircuit, FileText, Loader, UserCircle
 } from "lucide-react";
 
 // Utils & Hooks
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { analyzeSymptomsForAsha } from "@/ai/flows/asha-symptom-analyzer";
+import { analyzeSymptoms as analyzeSymptomsForAsha } from "@/lib/analyze-client";
 
 /* ========================================
    📊 MOCK DATA (Replace with API data)
    ======================================== */
 const patientData = [
-  { 
-    id: "p001", 
-    name: "Sunita Devi", 
-    status: "Under Observation", 
-    age: 34, 
-    gender: "F", 
-    village: "Rampur", 
-    lastChecked: "2h ago", 
-    symptoms: ["Fever", "Cough"], 
-    risk: "Medium", 
-    phone: "9876543210", 
+  {
+    id: "p001",
+    name: "Sunita Devi",
+    status: "Under Observation",
+    age: 34,
+    gender: "F",
+    village: "Rampur",
+    lastChecked: "2h ago",
+    symptoms: ["Fever", "Cough"],
+    risk: "Medium",
+    phone: "9876543210",
     history: [
-      { 
-        date: "2024-07-25", 
-        symptoms: ["Mild Fever"], 
-        diagnosis: "Common Cold", 
-        risk: "Low", 
-        notes: "Advised rest and hydration." 
+      {
+        date: "2024-07-25",
+        symptoms: ["Mild Fever"],
+        diagnosis: "Common Cold",
+        risk: "Low",
+        notes: "Advised rest and hydration."
       },
-      { 
-        date: "2024-07-10", 
-        symptoms: ["Headache"], 
-        diagnosis: "Fatigue", 
-        risk: "Low", 
-        notes: "N/A" 
+      {
+        date: "2024-07-10",
+        symptoms: ["Headache"],
+        diagnosis: "Fatigue",
+        risk: "Low",
+        notes: "N/A"
       }
-    ], 
+    ],
     aiQueryHistory: [
       {
         date: "2024-07-30",
@@ -79,47 +80,47 @@ const patientData = [
       }
     ]
   },
-  { 
-    id: "p002", 
-    name: "Amit Kumar", 
-    status: "Stable", 
-    age: 45, 
-    gender: "M", 
-    village: "Sitapur", 
-    lastChecked: "1d ago", 
-    symptoms: ["Headache"], 
-    risk: "Low", 
-    phone: "9876543211", 
+  {
+    id: "p002",
+    name: "Amit Kumar",
+    status: "Stable",
+    age: 45,
+    gender: "M",
+    village: "Sitapur",
+    lastChecked: "1d ago",
+    symptoms: ["Headache"],
+    risk: "Low",
+    phone: "9876543211",
     history: [],
     aiQueryHistory: []
   },
-  { 
-    id: "p003", 
-    name: "Geeta Singh", 
-    status: "High Risk", 
-    age: 68, 
-    gender: "F", 
-    village: "Rampur", 
-    lastChecked: "1h ago", 
-    symptoms: ["Breathing Difficulty", "Chest Pain"], 
-    risk: "High", 
-    phone: "9876543212", 
+  {
+    id: "p003",
+    name: "Geeta Singh",
+    status: "High Risk",
+    age: 68,
+    gender: "F",
+    village: "Rampur",
+    lastChecked: "1h ago",
+    symptoms: ["Breathing Difficulty", "Chest Pain"],
+    risk: "High",
+    phone: "9876543212",
     history: [
-      { 
-        date: "2024-07-28", 
-        symptoms: ["Fatigue", "Cough"], 
-        diagnosis: "Possible Bronchitis", 
-        risk: "Medium", 
-        notes: "Referred for check-up." 
+      {
+        date: "2024-07-28",
+        symptoms: ["Fatigue", "Cough"],
+        diagnosis: "Possible Bronchitis",
+        risk: "Medium",
+        notes: "Referred for check-up."
       },
-      { 
-        date: "2024-07-20", 
-        symptoms: ["High Fever"], 
-        diagnosis: "Viral Infection", 
-        risk: "Medium", 
-        notes: "Prescribed Paracetamol." 
+      {
+        date: "2024-07-20",
+        symptoms: ["High Fever"],
+        diagnosis: "Viral Infection",
+        risk: "Medium",
+        notes: "Prescribed Paracetamol."
       }
-    ], 
+    ],
     aiQueryHistory: [
       {
         date: "2024-07-29",
@@ -141,47 +142,47 @@ const patientData = [
           risk: "High"
         }
       }
-    ] 
+    ]
   },
-  { 
-    id: "p004", 
-    name: "Ramesh Patel", 
-    status: "Follow-up Required", 
-    age: 52, 
-    gender: "M", 
-    village: "Alipur", 
-    lastChecked: "3d ago", 
-    symptoms: ["Fatigue"], 
-    risk: "Medium", 
-    phone: "9876543213", 
+  {
+    id: "p004",
+    name: "Ramesh Patel",
+    status: "Follow-up Required",
+    age: 52,
+    gender: "M",
+    village: "Alipur",
+    lastChecked: "3d ago",
+    symptoms: ["Fatigue"],
+    risk: "Medium",
+    phone: "9876543213",
     history: [],
     aiQueryHistory: []
   },
-  { 
-    id: "p005", 
-    name: "Priya Sharma", 
-    status: "Stable", 
-    age: 28, 
-    gender: "F", 
-    village: "Sitapur", 
-    lastChecked: "5h ago", 
-    symptoms: ["N/A"], 
-    risk: "Low", 
-    phone: "9876543214", 
+  {
+    id: "p005",
+    name: "Priya Sharma",
+    status: "Stable",
+    age: 28,
+    gender: "F",
+    village: "Sitapur",
+    lastChecked: "5h ago",
+    symptoms: ["N/A"],
+    risk: "Low",
+    phone: "9876543214",
     history: [],
     aiQueryHistory: []
   },
-  { 
-    id: "p006", 
-    name: "Mahesh Yadav", 
-    status: "Follow-up Required", 
-    age: 60, 
-    gender: "M", 
-    village: "Rampur", 
-    lastChecked: "4d ago", 
-    symptoms: ["High BP"], 
-    risk: "Medium", 
-    phone: "9876543215", 
+  {
+    id: "p006",
+    name: "Mahesh Yadav",
+    status: "Follow-up Required",
+    age: 60,
+    gender: "M",
+    village: "Rampur",
+    lastChecked: "4d ago",
+    symptoms: ["High BP"],
+    risk: "Medium",
+    phone: "9876543215",
     history: [],
     aiQueryHistory: []
   },
@@ -233,8 +234,8 @@ const riskColors = {
    🔹 SUMMARY CARD COMPONENT
    ======================================== */
 const SummaryCard = ({ title, value, icon: Icon, subtext, onClick, isActive }) => (
-  <Card 
-    onClick={onClick} 
+  <Card
+    onClick={onClick}
     className={cn(
       "cursor-pointer transition-all hover:border-primary hover:shadow-md",
       isActive && "border-primary bg-primary/5 shadow-md"
@@ -242,7 +243,7 @@ const SummaryCard = ({ title, value, icon: Icon, subtext, onClick, isActive }) =
   >
     <CardHeader className="flex flex-row items-center justify-between pb-2">
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-muted-foreground"/>
+      <Icon className="h-4 w-4 text-muted-foreground" />
     </CardHeader>
     <CardContent>
       <div className="text-2xl font-bold">{value}</div>
@@ -259,7 +260,7 @@ const PatientActions = ({ patient, onViewDetails }) => (
     <DropdownMenuTrigger asChild>
       <Button variant="ghost" className="h-8 w-8 p-0">
         <span className="sr-only">Open menu</span>
-        <MoreHorizontal className="h-4 w-4"/>
+        <MoreHorizontal className="h-4 w-4" />
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
@@ -298,7 +299,7 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
     // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.name.toLowerCase().includes(query) ||
         p.phone.includes(query) ||
         p.village.toLowerCase().includes(query)
@@ -314,9 +315,9 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
         <CardTitle>Area Patient List</CardTitle>
         <div className="mt-4 flex flex-col md:flex-row md:items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"/>
-            <Input 
-              placeholder="Search by name, phone, village..." 
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, phone, village..."
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -325,7 +326,7 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
           <div className="flex gap-2">
             <Select>
               <SelectTrigger className="w-full md:w-[150px]">
-                <SelectValue placeholder="All Villages"/>
+                <SelectValue placeholder="All Villages" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="rampur">Rampur</SelectItem>
@@ -335,7 +336,7 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
             </Select>
             <Select>
               <SelectTrigger className="w-full md:w-[150px]">
-                <SelectValue placeholder="All Statuses"/>
+                <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="stable">Stable</SelectItem>
@@ -345,7 +346,7 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
               </SelectContent>
             </Select>
             <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4"/>
+              <Filter className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -369,8 +370,8 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="font-medium">{p.name}</div>
-                    <Badge 
-                      variant="outline" 
+                    <Badge
+                      variant="outline"
                       className={cn("mt-1 text-xs", statusColors[p.status])}
                     >
                       {p.status}
@@ -394,7 +395,7 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
                     <Badge variant={riskColors[p.risk]}>{p.risk}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <PatientActions patient={p} onViewDetails={onViewDetails}/>
+                    <PatientActions patient={p} onViewDetails={onViewDetails} />
                   </TableCell>
                 </TableRow>
               ))
@@ -407,7 +408,7 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
             )}
           </TableBody>
         </Table>
-        
+
         {/* Mobile Card View */}
         <div className="md:hidden space-y-4">
           {filteredPatients.length > 0 ? (
@@ -420,11 +421,11 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
                       {p.age} / {p.gender} - {p.village}
                     </div>
                   </div>
-                  <PatientActions patient={p} onViewDetails={onViewDetails}/>
+                  <PatientActions patient={p} onViewDetails={onViewDetails} />
                 </div>
                 <div className="my-2">
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={cn("text-xs", statusColors[p.status])}
                   >
                     {p.status}
@@ -477,8 +478,8 @@ const TodayWorkSummary = () => (
               <TableCell className="font-medium">{v.name}</TableCell>
               <TableCell>{v.time}</TableCell>
               <TableCell>
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className={cn("text-xs", statusColors[v.status])}
                 >
                   {v.status}
@@ -499,30 +500,30 @@ const TopSymptoms = () => (
   <Card>
     <CardHeader>
       <CardTitle className="flex items-center gap-2">
-        <BarChart2 className="w-5 h-5 text-primary"/>
+        <BarChart2 className="w-5 h-5 text-primary" />
         Top Symptoms
       </CardTitle>
       <CardDescription>This week</CardDescription>
     </CardHeader>
     <CardContent className="h-[250px] -ml-4">
-      <BarChart 
-        data={topSymptomsData} 
-        layout="vertical" 
+      <BarChart
+        data={topSymptomsData}
+        layout="vertical"
         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
       >
-        <CartesianGrid strokeDasharray="3 3" horizontal={false}/>
-        <XAxis type="number"/>
-        <YAxis 
-          dataKey="name" 
-          type="category" 
-          width={80} 
-          tickLine={false} 
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+        <XAxis type="number" />
+        <YAxis
+          dataKey="name"
+          type="category"
+          width={80}
+          tickLine={false}
           axisLine={false}
         />
-        <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }}/>
-        <Bar 
-          dataKey="count" 
-          fill="hsl(var(--primary))" 
+        <Tooltip cursor={{ fill: 'hsl(var(--secondary))' }} />
+        <Bar
+          dataKey="count"
+          fill="hsl(var(--primary))"
           radius={[0, 4, 4, 0]}
         />
       </BarChart>
@@ -542,20 +543,20 @@ const MedicineModule = () => (
       <Tabs defaultValue="inventory">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="inventory">
-            <Pill className="mr-2"/> Inventory
+            <Pill className="mr-2" /> Inventory
           </TabsTrigger>
           <TabsTrigger value="distribution">
-            <BookMarked className="mr-2"/> Distribution Log
+            <BookMarked className="mr-2" /> Distribution Log
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="inventory" className="mt-4">
           <div className="flex justify-end gap-2 mb-4">
             <Button variant="outline">
-              <Plus className="mr-2 h-4 w-4"/> Add Stock
+              <Plus className="mr-2 h-4 w-4" /> Add Stock
             </Button>
             <Button variant="outline">
-              <Edit className="mr-2 h-4 w-4"/> Update Stock
+              <Edit className="mr-2 h-4 w-4" /> Update Stock
             </Button>
           </div>
           <Table>
@@ -574,11 +575,11 @@ const MedicineModule = () => (
                   <TableCell>{m.stock}</TableCell>
                   <TableCell>{m.expiry}</TableCell>
                   <TableCell>
-                    <Badge 
+                    <Badge
                       variant={
-                        m.status === 'OK' ? 'secondary' : 
-                        m.status === 'Low' ? 'default' : 
-                        'destructive'
+                        m.status === 'OK' ? 'secondary' :
+                          m.status === 'Low' ? 'default' :
+                            'destructive'
                       }
                     >
                       {m.status}
@@ -589,7 +590,7 @@ const MedicineModule = () => (
             </TableBody>
           </Table>
         </TabsContent>
-        
+
         <TabsContent value="distribution" className="mt-4">
           <Table>
             <TableHeader>
@@ -624,7 +625,7 @@ const MedicineModule = () => (
    ======================================== */
 const HighRiskAlerts = () => {
   const highRiskPatients = patientData.filter(p => p.risk === "High");
-  
+
   return (
     <Card>
       <CardHeader>
@@ -638,8 +639,8 @@ const HighRiskAlerts = () => {
         {highRiskPatients.length > 0 ? (
           <div className="space-y-4">
             {highRiskPatients.map(p => (
-              <div 
-                key={p.id} 
+              <div
+                key={p.id}
                 className="p-3 rounded-lg bg-red-50 border border-red-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"
               >
                 <div>
@@ -647,15 +648,15 @@ const HighRiskAlerts = () => {
                   <p className="text-sm text-red-700">{p.symptoms.join(", ")}</p>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="border-red-600 text-red-600 hover:bg-red-100 hover:text-red-700"
                   >
-                    <PhoneCall className="h-4 w-4 mr-1"/> Call PHC
+                    <PhoneCall className="h-4 w-4 mr-1" /> Call PHC
                   </Button>
                   <Button variant="destructive" size="sm">
-                    <Send className="h-4 w-4 mr-1"/> Refer Now
+                    <Send className="h-4 w-4 mr-1" /> Refer Now
                   </Button>
                 </div>
               </div>
@@ -705,7 +706,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
       });
     } catch (error) {
       console.error("❌ AI Analysis failed:", error);
-      
+
       let description = "Could not get a response from the AI. Please try again later.";
       if (error instanceof Error && error.message.includes("429")) {
         description = "You have exceeded the request limit. Please wait and try again.";
@@ -751,7 +752,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
         <DialogHeader className="p-6 pb-0 shrink-0">
           <DialogTitle>Patient Details: {patient.name}</DialogTitle>
           <DialogDescription>
-            A detailed view of the patient&apos;s profile, including their personal 
+            A detailed view of the patient&apos;s profile, including their personal
             information, visit history, and an AI-powered symptom analysis tool.
           </DialogDescription>
         </DialogHeader>
@@ -761,7 +762,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
             {/* Left Panel - Patient Info */}
             <div className="md:col-span-2 bg-secondary/50 p-6 flex flex-col rounded-bl-lg">
               <div className="flex items-center gap-4 mb-6">
-                <UserCircle className="w-16 h-16 text-primary"/>
+                <UserCircle className="w-16 h-16 text-primary" />
                 <div>
                   <h2 className="text-2xl font-bold">{patient.name}</h2>
                   <p className="text-muted-foreground">
@@ -774,8 +775,8 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="font-medium text-muted-foreground">Current Status:</span>
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={cn(statusColors[patient.status])}
                   >
                     {patient.status}
@@ -787,12 +788,12 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
                 </div>
               </div>
 
-              <hr className="my-6"/>
+              <hr className="my-6" />
 
               <Card className="flex-grow">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
-                    <History className="w-4 h-4"/> Visit History
+                    <History className="w-4 h-4" /> Visit History
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm max-h-80 overflow-y-auto">
@@ -819,10 +820,10 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
               <Tabs defaultValue="new-analysis" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="new-analysis">
-                    <BrainCircuit className="mr-2 h-4 w-4"/> New Analysis
+                    <BrainCircuit className="mr-2 h-4 w-4" /> New Analysis
                   </TabsTrigger>
                   <TabsTrigger value="query-history">
-                    <FileText className="mr-2 h-4 w-4"/> Citizen Query History
+                    <FileText className="mr-2 h-4 w-4" /> Citizen Query History
                   </TabsTrigger>
                 </TabsList>
 
@@ -831,7 +832,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
                   <Card className="mt-4">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <BrainCircuit className="text-primary"/> 
+                        <BrainCircuit className="text-primary" />
                         AI Symptom Analysis
                       </CardTitle>
                       <CardDescription>
@@ -839,20 +840,20 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Textarea 
-                        placeholder="e.g., 'Patient has high fever (102°F) and feels very weak...'" 
+                      <Textarea
+                        placeholder="e.g., 'Patient has high fever (102°F) and feels very weak...'"
                         value={currentSymptoms}
                         onChange={(e) => setCurrentSymptoms(e.target.value)}
                         className="min-h-[100px]"
                       />
                     </CardContent>
                     <CardFooter>
-                      <Button 
+                      <Button
                         onClick={handleAnalyze}
                         disabled={isAnalyzing || !currentSymptoms}
                         className="w-full"
                       >
-                        {isAnalyzing && <Loader className="mr-2 h-4 w-4 animate-spin"/>}
+                        {isAnalyzing && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                         {isAnalyzing ? "Analyzing..." : "Analyze with AI"}
                       </Button>
                     </CardFooter>
@@ -896,7 +897,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
                         {aiResult.risk === 'High' && (
                           <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive">
                             <p className="font-bold flex items-center gap-2">
-                              <AlertTriangle className="w-5 h-5"/>
+                              <AlertTriangle className="w-5 h-5" />
                               Immediate Action Required
                             </p>
                             <p className="text-sm mt-1">
@@ -921,17 +922,17 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
                     <CardContent className="space-y-2 max-h-[500px] overflow-y-auto pr-3">
                       {patient.aiQueryHistory && patient.aiQueryHistory.length > 0 ? (
                         patient.aiQueryHistory.slice().reverse().map((query, index) => (
-                          <Accordion 
-                            type="single" 
-                            collapsible 
-                            key={index} 
+                          <Accordion
+                            type="single"
+                            collapsible
+                            key={index}
                             className="w-full"
                           >
                             <AccordionItem value={`item-${index}`}>
                               <AccordionTrigger>
                                 <div className="flex justify-between w-full pr-4 items-center">
                                   <div className="flex items-center gap-2">
-                                    <History className="w-4 h-4 text-muted-foreground"/>
+                                    <History className="w-4 h-4 text-muted-foreground" />
                                     <span className="font-semibold text-sm">
                                       {query.date}
                                     </span>
@@ -1050,55 +1051,51 @@ export default function AshaDashboard() {
 
   // 🔄 Loading State
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin text-primary"/>
-      </div>
-    );
+    return <MedicalLoader />;
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-secondary/50">
-      <DashboardHeader role="ASHA Worker"/>
+      <DashboardHeader role="ASHA Worker" />
 
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <div className="max-w-screen-2xl mx-auto space-y-6">
-          
+
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            <SummaryCard 
-              title="Total Patients" 
-              value={patientCounts.total.toString()} 
-              icon={Users} 
-              subtext="in your area" 
-              onClick={() => handleFilterChange(null)} 
+            <SummaryCard
+              title="Total Patients"
+              value={patientCounts.total.toString()}
+              icon={Users}
+              subtext="in your area"
+              onClick={() => handleFilterChange(null)}
               isActive={activeFilter === null}
             />
-            <SummaryCard 
-              title="Today's Visits" 
-              value={patientCounts.today.toString()} 
-              icon={ClipboardList} 
-              onClick={() => handleFilterChange('today')} 
+            <SummaryCard
+              title="Today's Visits"
+              value={patientCounts.today.toString()}
+              icon={ClipboardList}
+              onClick={() => handleFilterChange('today')}
               isActive={activeFilter === 'today'}
             />
-            <SummaryCard 
-              title="High Risk Cases" 
-              value={patientCounts.highRisk.toString()} 
-              icon={HeartPulse} 
-              onClick={() => handleFilterChange('high-risk')} 
+            <SummaryCard
+              title="High Risk Cases"
+              value={patientCounts.highRisk.toString()}
+              icon={HeartPulse}
+              onClick={() => handleFilterChange('high-risk')}
               isActive={activeFilter === 'high-risk'}
             />
-            <SummaryCard 
-              title="Pending Follow-ups" 
-              value={patientCounts.followUp.toString()} 
-              icon={Bell} 
-              onClick={() => handleFilterChange('follow-up')} 
+            <SummaryCard
+              title="Pending Follow-ups"
+              value={patientCounts.followUp.toString()}
+              icon={Bell}
+              onClick={() => handleFilterChange('follow-up')}
               isActive={activeFilter === 'follow-up'}
             />
-            <SummaryCard 
-              title="Referrals Sent" 
-              value="2" 
-              icon={Truck} 
+            <SummaryCard
+              title="Referrals Sent"
+              value="2"
+              icon={Truck}
               subtext="this week"
             />
           </div>
@@ -1107,8 +1104,8 @@ export default function AshaDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left Column - Patient List & Medicine */}
             <div className="lg:col-span-3 space-y-6">
-              <AreaPatientList 
-                activeFilter={activeFilter} 
+              <AreaPatientList
+                activeFilter={activeFilter}
                 onViewDetails={handleViewDetails}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -1127,9 +1124,9 @@ export default function AshaDashboard() {
       </main>
 
       {/* Patient Detail Modal */}
-      <PatientDetailModal 
-        patient={selectedPatient} 
-        isOpen={isDetailModalOpen} 
+      <PatientDetailModal
+        patient={selectedPatient}
+        isOpen={isDetailModalOpen}
         onOpenChange={setIsDetailModalOpen}
       />
     </div>
