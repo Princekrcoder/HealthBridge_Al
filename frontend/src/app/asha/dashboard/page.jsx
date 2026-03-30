@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { fetchDashboardData } from "@/lib/api";
 import { MedicalLoader } from "@/components/ui/medical-loader";
@@ -28,171 +28,29 @@ import {
   Users, ClipboardList, HeartPulse, Bell, Truck, Search,
   Filter, MoreHorizontal, PhoneCall, Send, Plus, Edit,
   BarChart2, Pill, BookMarked, AlertTriangle, History,
-  BrainCircuit, FileText, Loader, UserCircle
+  BrainCircuit, FileText, Loader, UserCircle, Volume2
 } from "lucide-react";
 
 // Utils & Hooks
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { analyzeSymptoms as analyzeSymptomsForAsha } from "@/lib/analyze-client";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { useLanguage } from "@/hooks/useLanguage";
+
+// 🔑 Authenticated fetch helper
+async function authFetch(url) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  return res.json();
+}
 
 /* ========================================
-   📊 MOCK DATA (Replace with API data)
+   📊 STATIC CHART / MEDICINE DATA
    ======================================== */
-const patientData = [
-  {
-    id: "p001",
-    name: "Sunita Devi",
-    status: "Under Observation",
-    age: 34,
-    gender: "F",
-    village: "Rampur",
-    lastChecked: "2h ago",
-    symptoms: ["Fever", "Cough"],
-    risk: "Medium",
-    phone: "9876543210",
-    history: [
-      {
-        date: "2024-07-25",
-        symptoms: ["Mild Fever"],
-        diagnosis: "Common Cold",
-        risk: "Low",
-        notes: "Advised rest and hydration."
-      },
-      {
-        date: "2024-07-10",
-        symptoms: ["Headache"],
-        diagnosis: "Fatigue",
-        risk: "Low",
-        notes: "N/A"
-      }
-    ],
-    aiQueryHistory: [
-      {
-        date: "2024-07-30",
-        symptoms: "Patient has a persistent cough and feels feverish for the last 2 days.",
-        analysis: {
-          statement: "The current symptoms, combined with a recent history of a common cold, suggest a possible secondary infection that should be monitored.",
-          potentialCondition: "Post-viral cough or early Bronchitis",
-          reasoning: "The patient had a common cold recently. A persistent cough and fever following a cold can indicate that the initial viral infection has either not fully resolved or a secondary bacterial infection is developing. The risk is currently medium but requires observation.",
-          risk: "Medium"
-        }
-      }
-    ]
-  },
-  {
-    id: "p002",
-    name: "Amit Kumar",
-    status: "Stable",
-    age: 45,
-    gender: "M",
-    village: "Sitapur",
-    lastChecked: "1d ago",
-    symptoms: ["Headache"],
-    risk: "Low",
-    phone: "9876543211",
-    history: [],
-    aiQueryHistory: []
-  },
-  {
-    id: "p003",
-    name: "Geeta Singh",
-    status: "High Risk",
-    age: 68,
-    gender: "F",
-    village: "Rampur",
-    lastChecked: "1h ago",
-    symptoms: ["Breathing Difficulty", "Chest Pain"],
-    risk: "High",
-    phone: "9876543212",
-    history: [
-      {
-        date: "2024-07-28",
-        symptoms: ["Fatigue", "Cough"],
-        diagnosis: "Possible Bronchitis",
-        risk: "Medium",
-        notes: "Referred for check-up."
-      },
-      {
-        date: "2024-07-20",
-        symptoms: ["High Fever"],
-        diagnosis: "Viral Infection",
-        risk: "Medium",
-        notes: "Prescribed Paracetamol."
-      }
-    ],
-    aiQueryHistory: [
-      {
-        date: "2024-07-29",
-        symptoms: "Feeling weak and have a mild fever.",
-        analysis: {
-          statement: "The current symptoms suggest a minor viral infection, monitoring is advised.",
-          potentialCondition: "Viral Fever",
-          reasoning: "Mild fever and weakness are common indicators of a viral infection. Given the patient's history, it's unlikely to be severe but should be monitored.",
-          risk: "Low"
-        }
-      },
-      {
-        date: "2024-07-30",
-        symptoms: "Breathing difficulty and chest pain after walking.",
-        analysis: {
-          statement: "CRITICAL: The patient's new symptoms combined with their history indicate a high probability of a serious cardiac or respiratory event.",
-          potentialCondition: "Acute Cardiopulmonary Distress",
-          reasoning: "The patient has a history of respiratory issues and is elderly. The new symptoms of chest pain and breathing difficulty are red flags for a life-threatening event like a heart attack or pulmonary embolism. Immediate referral is necessary.",
-          risk: "High"
-        }
-      }
-    ]
-  },
-  {
-    id: "p004",
-    name: "Ramesh Patel",
-    status: "Follow-up Required",
-    age: 52,
-    gender: "M",
-    village: "Alipur",
-    lastChecked: "3d ago",
-    symptoms: ["Fatigue"],
-    risk: "Medium",
-    phone: "9876543213",
-    history: [],
-    aiQueryHistory: []
-  },
-  {
-    id: "p005",
-    name: "Priya Sharma",
-    status: "Stable",
-    age: 28,
-    gender: "F",
-    village: "Sitapur",
-    lastChecked: "5h ago",
-    symptoms: ["N/A"],
-    risk: "Low",
-    phone: "9876543214",
-    history: [],
-    aiQueryHistory: []
-  },
-  {
-    id: "p006",
-    name: "Mahesh Yadav",
-    status: "Follow-up Required",
-    age: 60,
-    gender: "M",
-    village: "Rampur",
-    lastChecked: "4d ago",
-    symptoms: ["High BP"],
-    risk: "Medium",
-    phone: "9876543215",
-    history: [],
-    aiQueryHistory: []
-  },
-];
-
-const todayVisitsData = [
-  { name: "Geeta Singh", time: "09:15 AM", status: "High Risk" },
-  { name: "Sunita Devi", time: "11:30 AM", status: "Under Observation" },
-  { name: "Mahesh Yadav", time: "01:00 PM", status: "Follow-up Required" },
-];
 
 const topSymptomsData = [
   { name: "Fever", count: 18 },
@@ -213,6 +71,30 @@ const medicineDistributionData = [
   { patient: "Sunita Devi", date: "2024-07-29", symptoms: "Fever", medicine: "Paracetamol", qty: 4, notes: "Advised rest." },
   { patient: "Rakesh Kumar", date: "2024-07-28", symptoms: "Diarrhea", medicine: "ORS", qty: 2, notes: "Monitor hydration." },
 ];
+
+// Static placeholder for Today's Work widget (will be replaced with real visits API)
+const todayVisitsData = [];
+
+
+// 🎯 Map risk_level from DB to display label
+const mapRisk = (risk) => {
+  if (!risk) return "Low";
+  const r = risk.toUpperCase();
+  if (r === "HIGH" || r === "CRITICAL") return "High";
+  if (r === "MEDIUM" || r === "MODERATE") return "Medium";
+  return "Low";
+};
+
+// 🎯 Format timestamp to relative time
+const timeAgo = (ts) => {
+  if (!ts) return "Never";
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+};
 
 /* ========================================
    🎨 STYLING CONFIGS
@@ -276,9 +158,9 @@ const PatientActions = ({ patient, onViewDetails }) => (
 /* ========================================
    🔹 AREA PATIENT LIST COMPONENT
    ======================================== */
-const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQuery }) => {
+const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQuery, citizens }) => {
   const filteredPatients = useMemo(() => {
-    let filtered = patientData;
+    let filtered = citizens || [];
 
     // Apply active filter
     if (activeFilter) {
@@ -287,12 +169,16 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
           filtered = filtered.filter(p => p.risk === "High");
           break;
         case 'follow-up':
-          filtered = filtered.filter(p => p.status === "Follow-up Required");
+          // Citizens with Medium risk as follow-up
+          filtered = filtered.filter(p => p.risk === "Medium");
           break;
-        case 'today':
-          const todayPatientNames = todayVisitsData.map(v => v.name);
-          filtered = filtered.filter(p => todayPatientNames.includes(p.name));
+        case 'today': {
+          const today = new Date().toDateString();
+          filtered = filtered.filter(p =>
+            p.last_query_at && new Date(p.last_query_at).toDateString() === today
+          );
           break;
+        }
       }
     }
 
@@ -300,14 +186,13 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(query) ||
-        p.phone.includes(query) ||
-        p.village.toLowerCase().includes(query)
+        p.name?.toLowerCase().includes(query) ||
+        p.email?.toLowerCase().includes(query)
       );
     }
 
     return filtered;
-  }, [activeFilter, searchQuery]);
+  }, [activeFilter, searchQuery, citizens]);
 
   return (
     <Card className="lg:col-span-3">
@@ -356,9 +241,9 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
         <Table className="hidden md:table">
           <TableHeader>
             <TableRow>
-              <TableHead>Patient</TableHead>
-              <TableHead>Details</TableHead>
-              <TableHead>Last Checked</TableHead>
+              <TableHead>Citizen</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Last Query</TableHead>
               <TableHead>Symptoms</TableHead>
               <TableHead>Risk</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -372,27 +257,26 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
                     <div className="font-medium">{p.name}</div>
                     <Badge
                       variant="outline"
-                      className={cn("mt-1 text-xs", statusColors[p.status])}
+                      className={cn("mt-1 text-xs", statusColors[p.status] || statusColors["Stable"])}
                     >
-                      {p.status}
+                      {p.status || "Registered"}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm text-muted-foreground">
-                      {p.age} / {p.gender}
-                    </div>
-                    <div className="text-sm">{p.village}</div>
+                    <div className="text-sm text-muted-foreground">{p.email}</div>
                   </TableCell>
-                  <TableCell>{p.lastChecked}</TableCell>
+                  <TableCell>{timeAgo(p.last_query_at)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {p.symptoms.map(s => (
-                        <Badge key={s} variant="secondary">{s}</Badge>
-                      ))}
-                    </div>
+                    {p.latest_symptoms ? (
+                      <span className="text-sm text-muted-foreground line-clamp-1 max-w-[200px]">
+                        {p.latest_symptoms}
+                      </span>
+                    ) : (
+                      <Badge variant="outline">No queries yet</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={riskColors[p.risk]}>{p.risk}</Badge>
+                    <Badge variant={riskColors[p.risk]}>{p.risk || "—"}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <PatientActions patient={p} onViewDetails={onViewDetails} />
@@ -402,7 +286,7 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No patients found matching your criteria
+                  No citizens found matching your criteria
                 </TableCell>
               </TableRow>
             )}
@@ -417,36 +301,34 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
                 <div className="flex justify-between items-start">
                   <div>
                     <div className="font-bold">{p.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {p.age} / {p.gender} - {p.village}
-                    </div>
+                    <div className="text-sm text-muted-foreground">{p.email}</div>
                   </div>
                   <PatientActions patient={p} onViewDetails={onViewDetails} />
                 </div>
                 <div className="my-2">
                   <Badge
                     variant="outline"
-                    className={cn("text-xs", statusColors[p.status])}
+                    className={cn("text-xs", statusColors[p.status] || statusColors["Stable"])}
                   >
-                    {p.status}
+                    {p.status || "Registered"}
                   </Badge>
                   <Badge variant={riskColors[p.risk]} className="ml-2">
-                    {p.risk} Risk
+                    {p.risk || "Low"} Risk
                   </Badge>
                 </div>
-                <div className="flex flex-wrap gap-1 my-2">
-                  {p.symptoms.map(s => (
-                    <Badge key={s} variant="secondary">{s}</Badge>
-                  ))}
-                </div>
+                {p.latest_symptoms && (
+                  <p className="text-sm text-muted-foreground line-clamp-2 my-2">
+                    {p.latest_symptoms}
+                  </p>
+                )}
                 <div className="text-xs text-muted-foreground text-right">
-                  Last checked: {p.lastChecked}
+                  Last query: {timeAgo(p.last_query_at)}
                 </div>
               </Card>
             ))
           ) : (
             <p className="text-center py-8 text-muted-foreground">
-              No patients found matching your criteria
+              No citizens found matching your criteria
             </p>
           )}
         </div>
@@ -623,8 +505,8 @@ const MedicineModule = () => (
 /* ========================================
    🔹 HIGH RISK ALERTS
    ======================================== */
-const HighRiskAlerts = () => {
-  const highRiskPatients = patientData.filter(p => p.risk === "High");
+const HighRiskAlerts = ({ citizens = [] }) => {
+  const highRiskPatients = citizens.filter(p => p.risk === "High");
 
   return (
     <Card>
@@ -675,8 +557,9 @@ const HighRiskAlerts = () => {
 /* ========================================
    🔹 PATIENT DETAIL MODAL
    ======================================== */
-const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
+const PatientDetailModal = ({ patient, isOpen, onOpenChange, citizenQueries, isLoadingQueries }) => {
   const { toast } = useToast();
+  const { language } = useLanguage();
   const [currentSymptoms, setCurrentSymptoms] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState(null);
@@ -689,16 +572,16 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
 
     try {
       const analysisInput = {
-        patientProfile: {
-          age: patient.age,
-          gender: patient.gender,
-        },
-        history: patient.history,
+        patientProfile: { name: patient.name },
         currentSymptoms: currentSymptoms,
+        language: language || 'en'
       };
 
       const result = await analyzeSymptomsForAsha(analysisInput);
       setAiResult(result);
+
+      const speakText = `${result.statement}. Potential Condition: ${result.potentialCondition}. ${result.risk} Risk.`;
+      speak(speakText);
 
       toast({
         title: "Analysis Complete",
@@ -706,35 +589,44 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
       });
     } catch (error) {
       console.error("❌ AI Analysis failed:", error);
-
       let description = "Could not get a response from the AI. Please try again later.";
       if (error instanceof Error && error.message.includes("429")) {
         description = "You have exceeded the request limit. Please wait and try again.";
       }
-
-      toast({
-        variant: "destructive",
-        title: "AI Analysis Failed",
-        description,
-      });
+      toast({ variant: "destructive", title: "AI Analysis Failed", description });
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // Load latest AI query when modal opens
+  // 🗣️ Text-to-Speech
+  const { speak, stop, isSpeaking } = useTextToSpeech();
+
+  const handleSpeakAnalysis = () => {
+    if (isSpeaking) {
+      stop();
+    } else if (aiResult) {
+      const text = `${aiResult.statement}. Potential Condition: ${aiResult.potentialCondition}. ${aiResult.risk} Risk.`;
+      speak(text);
+    }
+  };
+
+  // Pre-fill from latest citizen query when modal opens
   useEffect(() => {
-    if (isOpen && patient?.id) {
-      const latestQuery = patient.aiQueryHistory?.slice().reverse()[0];
-      if (latestQuery) {
-        setCurrentSymptoms(latestQuery.symptoms);
-        setAiResult(latestQuery.analysis);
-      } else {
-        setCurrentSymptoms("");
-        setAiResult(null);
-      }
+    if (isOpen && citizenQueries?.length > 0) {
+      const latest = citizenQueries[0]; // already sorted DESC
+      setCurrentSymptoms(latest.symptoms || "");
+      // Try to parse AI response for pre-fill
+      try {
+        const parsed = typeof latest.ai_response === 'string'
+          ? JSON.parse(latest.ai_response)
+          : latest.ai_response;
+        if (parsed?.user_message) {
+          setAiResult(null); // Don't pre-fill, let ASHA run fresh
+        }
+      } catch {/* ignore */ }
     } else if (!isOpen) {
-      // Reset after animation
+      stop();
       const timer = setTimeout(() => {
         setCurrentSymptoms("");
         setAiResult(null);
@@ -742,7 +634,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, patient?.id, patient?.aiQueryHistory]);
+  }, [isOpen, citizenQueries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!patient) return null;
 
@@ -865,9 +757,20 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
                       <CardHeader>
                         <CardTitle className="flex justify-between items-center">
                           <span>AI Analysis Result</span>
-                          <Badge variant={riskColors[aiResult.risk]}>
-                            {aiResult.risk}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleSpeakAnalysis}
+                              className={cn("h-8 w-8 p-0 rounded-full", isSpeaking && "text-primary animate-pulse bg-primary/10")}
+                              title={isSpeaking ? "Stop Reading" : "Read Aloud"}
+                            >
+                              {isSpeaking ? <Loader className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                            </Button>
+                            <Badge variant={riskColors[aiResult.risk]}>
+                              {aiResult.risk}
+                            </Badge>
+                          </div>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -910,74 +813,89 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
                   )}
                 </TabsContent>
 
-                {/* Query History Tab */}
+                {/* Query History Tab — real DB data */}
                 <TabsContent value="query-history">
                   <Card className="mt-4">
                     <CardHeader>
-                      <CardTitle>Citizen's Health Queries</CardTitle>
+                      <CardTitle>Citizen&apos;s Health Queries</CardTitle>
                       <CardDescription>
-                        History of AI health queries made by the citizen from their portal.
+                        Health queries submitted by {patient.name} from their portal.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2 max-h-[500px] overflow-y-auto pr-3">
-                      {patient.aiQueryHistory && patient.aiQueryHistory.length > 0 ? (
-                        patient.aiQueryHistory.slice().reverse().map((query, index) => (
-                          <Accordion
-                            type="single"
-                            collapsible
-                            key={index}
-                            className="w-full"
-                          >
-                            <AccordionItem value={`item-${index}`}>
-                              <AccordionTrigger>
-                                <div className="flex justify-between w-full pr-4 items-center">
-                                  <div className="flex items-center gap-2">
-                                    <History className="w-4 h-4 text-muted-foreground" />
-                                    <span className="font-semibold text-sm">
-                                      {query.date}
-                                    </span>
+                      {isLoadingQueries ? (
+                        <div className="flex justify-center py-8">
+                          <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : citizenQueries && citizenQueries.length > 0 ? (
+                        citizenQueries.map((query, index) => {
+                          const risk = mapRisk(query.risk_level);
+                          let aiMsg = null;
+                          try {
+                            const parsed = typeof query.ai_response === 'string'
+                              ? JSON.parse(query.ai_response)
+                              : query.ai_response;
+                            aiMsg = parsed?.user_message || null;
+                          } catch {/* ignore */ }
+
+                          return (
+                            <Accordion
+                              type="single"
+                              collapsible
+                              key={query.id || index}
+                              className="w-full"
+                            >
+                              <AccordionItem value={`item-${index}`}>
+                                <AccordionTrigger>
+                                  <div className="flex justify-between w-full pr-4 items-center">
+                                    <div className="flex items-center gap-2">
+                                      <History className="w-4 h-4 text-muted-foreground" />
+                                      <span className="font-semibold text-sm">
+                                        {new Date(query.created_at).toLocaleDateString('en-IN', {
+                                          day: 'numeric', month: 'short', year: 'numeric',
+                                          hour: '2-digit', minute: '2-digit'
+                                        })}
+                                      </span>
+                                    </div>
+                                    <Badge variant={riskColors[risk]}>{risk} Risk</Badge>
                                   </div>
-                                  <Badge variant={riskColors[query.analysis.risk]}>
-                                    {query.analysis.risk}
-                                  </Badge>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="p-2 space-y-3">
-                                <div>
-                                  <h4 className="font-semibold text-sm mb-1">
-                                    Symptoms Reported by Citizen
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground italic p-2 bg-secondary rounded-md">
-                                    &quot;{query.symptoms}&quot;
-                                  </p>
-                                </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-2 space-y-3">
+                                  <div>
+                                    <h4 className="font-semibold text-sm mb-1">Symptoms Reported</h4>
+                                    <p className="text-sm text-muted-foreground italic p-2 bg-secondary rounded-md">
+                                      &quot;{query.symptoms}&quot;
+                                    </p>
+                                  </div>
 
-                                <Separator />
+                                  {/* Vitals if present */}
+                                  {(query.temperature || query.spo2 || query.bp || query.sugar) && (
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      {query.temperature && <div className="p-2 bg-secondary rounded"><span className="font-medium">Temp:</span> {query.temperature}°F</div>}
+                                      {query.spo2 && <div className="p-2 bg-secondary rounded"><span className="font-medium">SpO2:</span> {query.spo2}%</div>}
+                                      {query.bp && <div className="p-2 bg-secondary rounded"><span className="font-medium">BP:</span> {query.bp}</div>}
+                                      {query.sugar && <div className="p-2 bg-secondary rounded"><span className="font-medium">Sugar:</span> {query.sugar}</div>}
+                                    </div>
+                                  )}
 
-                                <h4 className="font-semibold text-sm">
-                                  AI Analysis Result
-                                </h4>
-                                <div className="text-sm p-3 bg-secondary/50 rounded-md space-y-2">
-                                  <p>
-                                    <span className="font-medium">Statement:</span>{' '}
-                                    {query.analysis.statement}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Potential Condition:</span>{' '}
-                                    {query.analysis.potentialCondition}
-                                  </p>
-                                  <p>
-                                    <span className="font-medium">Reasoning:</span>{' '}
-                                    {query.analysis.reasoning}
-                                  </p>
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          </Accordion>
-                        ))
+                                  <Separator />
+
+                                  {aiMsg ? (
+                                    <div className="text-sm p-3 bg-secondary/50 rounded-md space-y-1">
+                                      <p className="font-medium">{aiMsg.title}</p>
+                                      <p className="text-muted-foreground">{aiMsg.description}</p>
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground">No AI response recorded.</p>
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
+                          );
+                        })
                       ) : (
                         <p className="text-muted-foreground text-center py-8">
-                          No past AI queries found for this patient.
+                          No health queries submitted yet by this citizen.
                         </p>
                       )}
                     </CardContent>
@@ -1004,50 +922,113 @@ export default function AshaDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [dashboardData, setDashboardData] = useState(null);
+  const [citizens, setCitizens] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [citizenQueries, setCitizenQueries] = useState([]);
+  const [isLoadingQueries, setIsLoadingQueries] = useState(false);
   const { toast } = useToast();
 
-  // 📥 Fetch Dashboard Data
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const data = await fetchDashboardData("asha");
-        setDashboardData(data);
-        // TODO: Replace mock data with API data
-        // setCitizens(data.citizens);
-      } catch (error) {
-        console.error("❌ Failed to fetch dashboard data:", error);
+  // 📥 Fetch Assigned Citizens
+  const loadCitizens = useCallback(async (showNotification = false) => {
+    try {
+      const data = await fetchDashboardData("asha");
+      const mapped = (data.citizens || []).map(c => ({
+        ...c,
+        risk: mapRisk(c.latest_risk),
+        status: c.latest_symptoms
+          ? (mapRisk(c.latest_risk) === "High" ? "High Risk"
+            : mapRisk(c.latest_risk) === "Medium" ? "Under Observation"
+              : "Stable")
+          : "Stable",
+      }));
+      setCitizens(mapped);
+      if (showNotification) {
         toast({
-          variant: "destructive",
-          title: "Data Load Failed",
-          description: "Could not load dashboard data. Please refresh.",
+          title: "🔔 New Citizen Query",
+          description: "A citizen just submitted a health query.",
         });
-      } finally {
-        setIsLoading(false);
       }
+    } catch (error) {
+      console.error("❌ Failed to fetch citizens:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  // ⚡ Live SSE connection — instant push from backend when citizen submits query
+  useEffect(() => {
+    loadCitizens(false); // initial load
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) return;
+
+    // Open SSE stream
+    const evtSource = new EventSource(
+      `http://localhost:5000/api/dashboard/asha/live?token=${encodeURIComponent(token)}`
+    );
+
+    evtSource.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "new_query") {
+          loadCitizens(true); // instant refresh + toast
+        }
+      } catch {/* ignore parse errors */ }
     };
 
-    loadDashboardData();
-  }, [toast]);
+    evtSource.onerror = () => {
+      // SSE disconnected — fallback to 30s polling
+      console.warn("SSE disconnected, falling back to polling");
+    };
+
+    // 30s backup poll (covers SSE failures & reconnects)
+    const fallback = setInterval(() => loadCitizens(false), 30_000);
+
+    return () => {
+      evtSource.close();
+      clearInterval(fallback);
+    };
+  }, [loadCitizens]);
+
+
 
   // 🎯 Handlers
   const handleFilterChange = (filter) => {
     setActiveFilter(prevFilter => (prevFilter === filter ? null : filter));
   };
 
-  const handleViewDetails = (patient) => {
+  const handleViewDetails = useCallback(async (patient) => {
     setSelectedPatient(patient);
+    setCitizenQueries([]);
     setIsDetailModalOpen(true);
-  };
+    setIsLoadingQueries(true);
+    try {
+      const data = await authFetch(
+        `http://localhost:5000/api/dashboard/asha/citizen/${patient.id}/queries`
+      );
+      setCitizenQueries(data.queries || []);
+    } catch (err) {
+      console.error("Failed to load citizen queries:", err);
+      toast({
+        variant: "destructive",
+        title: "Could not load queries",
+        description: "Failed to fetch this citizen's health history.",
+      });
+    } finally {
+      setIsLoadingQueries(false);
+    }
+  }, [toast]);
 
   // 📈 Computed Stats
   const patientCounts = useMemo(() => ({
-    total: patientData.length,
-    today: todayVisitsData.length,
-    highRisk: patientData.filter(p => p.risk === 'High').length,
-    followUp: patientData.filter(p => p.status === 'Follow-up Required').length,
-  }), []);
+    total: citizens.length,
+    today: citizens.filter(p => {
+      if (!p.last_query_at) return false;
+      return new Date(p.last_query_at).toDateString() === new Date().toDateString();
+    }).length,
+    highRisk: citizens.filter(p => p.risk === 'High').length,
+    followUp: citizens.filter(p => p.risk === 'Medium').length,
+  }), [citizens]);
 
   // 🔄 Loading State
   if (isLoading) {
@@ -1102,20 +1083,21 @@ export default function AshaDashboard() {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Left Column - Patient List & Medicine */}
+            {/* Left Column - Citizen List & Medicine */}
             <div className="lg:col-span-3 space-y-6">
               <AreaPatientList
                 activeFilter={activeFilter}
                 onViewDetails={handleViewDetails}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                citizens={citizens}
               />
               <MedicineModule />
             </div>
 
             {/* Right Column - Alerts & Summary */}
             <div className="lg:col-span-1 space-y-6">
-              <HighRiskAlerts />
+              <HighRiskAlerts citizens={citizens} />
               <TodayWorkSummary />
               <TopSymptoms />
             </div>
@@ -1123,11 +1105,13 @@ export default function AshaDashboard() {
         </div>
       </main>
 
-      {/* Patient Detail Modal */}
+      {/* Patient Detail Modal — with real query history */}
       <PatientDetailModal
         patient={selectedPatient}
         isOpen={isDetailModalOpen}
         onOpenChange={setIsDetailModalOpen}
+        citizenQueries={citizenQueries}
+        isLoadingQueries={isLoadingQueries}
       />
     </div>
   );

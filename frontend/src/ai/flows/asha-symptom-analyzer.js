@@ -4,59 +4,84 @@
  *
  * - analyzeSymptomsForAsha - A function that handles the symptom analysis.
  */
-import { ai } from '@/ai/genkit';
-import { AshaAnalyzerInputSchema, AshaAnalyzerOutputSchema } from '@/ai/schemas/asha-analyzer';
+// Replace Genkit with direct LLaMA-3 (via Groq) API interface
+const HF_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
 export async function analyzeSymptomsForAsha(input) {
-    return ashaSymptomAnalyzerFlow(input);
-}
-const prompt = ai.definePrompt({
-    name: 'ashaSymptomAnalyzerPrompt',
-    model: 'googleai/gemini-2.5-flash',
-    input: { schema: AshaAnalyzerInputSchema },
-    output: { schema: AshaAnalyzerOutputSchema },
-    prompt: `You are a medical AI assistant for an ASHA (Accredited Social Health Activist) worker in rural India. Your goal is to analyze patient information and provide a preliminary assessment to help the ASHA worker decide on next steps.
+    const { patientProfile, history, currentSymptoms, language = 'en' } = input;
 
-You will be given the patient's profile, their past visit history, and their current symptoms.
+    // Language Map
+    const langMap = {
+        'en': 'English', 'hi': 'Hindi', 'bn': 'Bengali', 'mr': 'Marathi',
+        'te': 'Telugu', 'ta': 'Tamil', 'gu': 'Gujarati', 'kn': 'Kannada',
+        'ml': 'Malayalam', 'pa': 'Punjabi', 'or': 'Odia', 'as': 'Assamese'
+    };
+    const targetLang = langMap[language] || 'English';
 
-- Patient Profile: Age: {{{patientProfile.age}}}, Gender: {{{patientProfile.gender}}}
-- Past Visit History:
-{{#if history}}
-  {{#each history}}
-  - Date: {{this.date}}, Diagnosis: {{this.diagnosis}}, Symptoms: {{#each this.symptoms}}{{this}}, {{/each}}, Risk: {{this.risk}}, Notes: {{this.notes}}
-  {{/each}}
-{{else}}
-  No past visit history available.
-{{/if}}
-- Current Symptoms: {{{currentSymptoms}}}
-
-Based on this information, perform the following tasks and provide the output in the specified JSON format:
-1.  **Analyze Risk**: Assess the risk level as "Low", "Medium", or "High". High risk is for symptoms like chest pain, breathing difficulty, severe bleeding, unconsciousness, or a combination of moderate symptoms with a high-risk patient profile (e.g., elderly with co-morbidities).
-2.  **Identify Potential Condition**: State the most likely potential condition. Be cautious; use terms like "Possible", "Likely", "Suspected".
-3.  **Provide Reasoning**: Explain your reasoning. Connect the current symptoms to the patient's history and known medical patterns. Why did you assign that risk level and potential condition?
-4.  **Create AI Statement**: Write a single, clear summary statement. If the risk is "High", it MUST begin with "CRITICAL:".
-
-Example for High Risk: A 68-year-old patient with past 'Possible Bronchitis' reports 'Breathing Difficulty' and 'Chest Pain'.
-- Risk: High
-- Potential Condition: Acute Cardiopulmonary Distress
-- Reasoning: The patient has a history of respiratory issues and is elderly. The new symptoms of chest pain and breathing difficulty are red flags for a life-threatening event like a heart attack or pulmonary embolism. Immediate referral is necessary.
-- Statement: CRITICAL: The patient's new symptoms combined with their history indicate a high probability of a serious cardiac or respiratory event.
-
-Example for Medium Risk: A 34-year-old patient with a history of a common cold reports 'high fever (102°F) and feels very weak'.
-- Risk: Medium
-- Potential Condition: Viral Fever or Influenza
-- Reasoning: High fever and weakness are indicative of a systemic infection, likely viral. While not immediately critical, the patient needs monitoring to ensure it doesn't progress to something more severe.
-- Statement: The current symptoms suggest a significant viral infection that requires monitoring.
-
-Now, analyze the provided patient data.`,
-});
-const ashaSymptomAnalyzerFlow = ai.defineFlow({
-    name: 'ashaSymptomAnalyzerFlow',
-    inputSchema: AshaAnalyzerInputSchema,
-    outputSchema: AshaAnalyzerOutputSchema,
-}, async (input) => {
-    const { output } = await prompt(input);
-    if (!output) {
-        throw new Error("The AI model did not return a valid analysis.");
+    // Construct the history text
+    let historyText = "No past visit history available.";
+    if (history && history.length > 0) {
+        historyText = history.map(h =>
+            `- Date: ${h.date}, Diagnosis: ${h.diagnosis}, Symptoms: ${h.symptoms.join(', ')}, Risk: ${h.risk}, Notes: ${h.notes}`
+        ).join('\n');
     }
-    return output;
-});
+
+    const systemPromptText = `You are a medical AI assistant for an ASHA (Accredited Social Health Activist) worker in rural India. 
+Your goal is to analyze patient information and provide a preliminary assessment.
+
+Patient Profile: Age: ${patientProfile.age}, Gender: ${patientProfile.gender}
+Past Visit History:
+${historyText}
+
+Current Symptoms: ${currentSymptoms}
+
+Based on this information, provide a structured JSON response with the following fields:
+1. "risk": "Low", "Medium", or "High"
+2. "potentialCondition": The most likely condition.
+3. "reasoning": Explanation linking symptoms to history/medical knowledge.
+4. "statement": A concise summary in ${targetLang}. Start with "CRITICAL:" if risk is High.
+
+IMPORTANT: The 'statement', 'reasoning', and 'potentialCondition' MUST be in ${targetLang} language.
+Output MUST be a valid JSON object ONLY. Do not include any text outside the JSON.`;
+
+    try {
+        const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY || process.env.gork_api;
+        if (!apiKey) throw new Error("Missing Groq API Key (GROK_API_KEY)");
+
+        const response = await fetch(HF_API_URL, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "llama-3.1-8b-instant",
+                messages: [
+                    { role: "system", content: "You are a helpful medical AI assistant that outputs only JSON." },
+                    { role: "user", content: systemPromptText }
+                ],
+                temperature: 0.1,
+                stream: false
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Groq API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        const generatedText = result.choices?.[0]?.message?.content || "";
+
+        // Attempt to parse JSON from the text
+        const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        } else {
+            throw new Error("Could not parse JSON from AI response");
+        }
+
+    } catch (error) {
+        console.error("AI Analysis failed:", error);
+        throw new Error("Failed to analyze symptoms. Please try again.");
+    }
+}

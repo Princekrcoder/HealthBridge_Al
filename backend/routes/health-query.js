@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require("../db");
 const { upload, uploadToS3 } = require("../services/upload-service");
 const authenticateToken = require("../middleware/authMiddleware");
+const { notifyAsha } = require("../sseManager");
 
 const fs = require('fs');
 
@@ -11,7 +12,8 @@ router.post("/", authenticateToken, upload.array("files", 5), async (req, res) =
     try {
         const {
             symptoms, duration, severity,
-            temperature, spo2, bp, sugar, is_diabetic
+            temperature, spo2, bp, sugar, is_diabetic,
+            language // 🌍 Extract language
         } = req.body;
 
         const userId = req.user.id; // From auth middleware
@@ -69,7 +71,7 @@ router.post("/", authenticateToken, upload.array("files", 5), async (req, res) =
                 }).join('\n');
 
                 const { analyzeHealthQuery } = require("../services/ai-service");
-                aiResponse = await analyzeHealthQuery(symptoms, historyContext);
+                aiResponse = await analyzeHealthQuery(symptoms, historyContext, language);
 
                 // Ensure structure matches
                 finalResponse = {
@@ -154,6 +156,24 @@ router.post("/", authenticateToken, upload.array("files", 5), async (req, res) =
         ];
 
         const result = await pool.query(query, values);
+        const savedQuery = result.rows[0];
+
+        // 🔔 Instantly notify the ASHA worker via SSE
+        try {
+            const userRow = await pool.query(
+                "SELECT asha_id FROM users WHERE id = $1", [userId]
+            );
+            const ashaId = userRow.rows[0]?.asha_id;
+            if (ashaId) {
+                notifyAsha(ashaId, {
+                    citizen_id: userId,
+                    risk_level: finalResponse.risk_level,
+                    symptoms: symptoms || "",
+                });
+            }
+        } catch (sseErr) {
+            console.error("SSE notify error (non-fatal):", sseErr.message);
+        }
 
         // 4. Return Final Response
         res.status(201).json(finalResponse);

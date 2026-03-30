@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard"; // 👈 IMPORT ADDED
 import { useLanguage } from "@/hooks/useLanguage"; // 👈 LANGUAGE HOOK
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import Link from "next/link";
-import { Bell, LogOut, User, Power, ChevronDown, Phone, Siren, FilePlus, CircleAlert, ArrowRight, Filter, Search, Pill, Inbox, Users, CheckCircle, Hourglass, Box, Truck, CalendarClock, PackageX, History, Building, UserCircle, BrainCircuit, FileText, Loader, AlertTriangle, } from "lucide-react";
+import { Bell, LogOut, User, Power, ChevronDown, Phone, Siren, FilePlus, CircleAlert, ArrowRight, Filter, Search, Pill, Inbox, Users, CheckCircle, Hourglass, Box, Truck, CalendarClock, PackageX, History, Building, UserCircle, BrainCircuit, FileText, Loader, AlertTriangle, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter, } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table";
@@ -331,6 +332,18 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
         }
     };
 
+    // 🗣️ Text-to-Speech
+    const { speak, stop, isSpeaking } = useTextToSpeech();
+
+    const handleSpeakAnalysis = () => {
+        if (isSpeaking) {
+            stop();
+        } else if (aiResult) {
+            const text = `${aiResult.statement}. Potential Condition: ${aiResult.potentialCondition}. ${aiResult.risk} Risk.`;
+            speak(text);
+        }
+    };
+
     useEffect(() => {
         if (isOpen && patient?.id) {
             const latestQuery = patient.aiQueryHistory?.slice().reverse()[0];
@@ -344,6 +357,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
             }
         }
         else if (!isOpen) {
+            stop(); // Stop speaking when modal closes
             const timer = setTimeout(() => {
                 setCurrentSymptoms("");
                 setAiResult(null);
@@ -351,7 +365,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
             }, 300); // Animation delay
             return () => clearTimeout(timer);
         }
-    }, [isOpen, patient?.id, patient?.aiQueryHistory]);
+    }, [isOpen, patient?.id, patient?.aiQueryHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!patient)
         return null;
@@ -436,7 +450,18 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
                                     <CardHeader>
                                         <CardTitle className="flex justify-between items-center">
                                             <span>AI Analysis Result</span>
-                                            <Badge variant={modalRiskColors[aiResult.risk]}>{aiResult.risk}</Badge>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handleSpeakAnalysis}
+                                                    className={cn("h-8 w-8 p-0 rounded-full", isSpeaking && "text-primary animate-pulse bg-primary/10")}
+                                                    title={isSpeaking ? "Stop Reading" : "Read Aloud"}
+                                                >
+                                                    {isSpeaking ? <Loader className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                                </Button>
+                                                <Badge variant={modalRiskColors[aiResult.risk]}>{aiResult.risk}</Badge>
+                                            </div>
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
@@ -505,7 +530,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange }) => {
 
 // SECTION: MAIN PAGE COMPONENT
 export default function ClinicalDashboard() {
-    useAuthGuard("doctor"); // 👈 AUTH GUARD ADDED
+    useAuthGuard("clinical"); // 👈 AUTH GUARD ADDED
 
     const { t } = useLanguage(); // 👈 LANGUAGE HOOK
 

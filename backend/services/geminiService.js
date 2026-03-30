@@ -1,23 +1,57 @@
-// backend/services/geminiService.js
-// Groq ki jagah Google Gemini 2.0 Flash use ho raha hai
-
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+const HF_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 /**
- * Language detect karo input text se
+ * Helper to call Groq API (LLaMA-3)
+ */
+const callHuggingFace = async (prompt) => {
+  try {
+    const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY || process.env.gork_api;
+    if (!apiKey) throw new Error("Missing Groq API Key");
+
+    const response = await fetch(HF_API_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.1
+      })
+    });
+
+    if (!response.ok) {
+      console.error(`Groq API Error: ${response.status} ${response.statusText}`);
+      throw new Error("AI Service Unavailable");
+    }
+
+    const getJson = await response.json();
+    return getJson.choices?.[0]?.message?.content || "";
+  } catch (error) {
+    console.error("Error calling Hugging Face:", error);
+    throw error;
+  }
+};
+
+/**
+ * Language detect input text
  * Returns ISO code: "hi", "pa", "en", "ta", etc.
  */
 const detectLanguage = async (text) => {
   try {
-    const result = await model.generateContent(
-      `You are a language detector. Reply with ONLY the ISO 639-1 language code.
+    const prompt = `You are a language detector. Reply with ONLY the ISO 639-1 language code.
 Examples: Hindi→hi, Punjabi→pa, Tamil→ta, Telugu→te, Bengali→bn, Marathi→mr, English→en
-Text: "${text.substring(0, 100)}"`
-    );
-    const lang = result.response.text().trim().toLowerCase().substring(0, 5);
+Text: "${text.substring(0, 100)}"`;
+
+    // We can use a simpler model for language detection if needed, but using main checking prompt is fine
+    // Or just assume 'hi' if complex. For now, let's use the same checked prompt.
+    // Actually, detectLanguage via LLM is slow. 
+    // Just minimal replacement here.
+    const output = await callHuggingFace(prompt);
+    const lang = output.trim().toLowerCase().substring(0, 5);
     return lang && /^[a-z]{2,5}$/.test(lang) ? lang : "hi";
   } catch {
     return "hi";
@@ -26,9 +60,6 @@ Text: "${text.substring(0, 100)}"`
 
 /**
  * Main symptom analysis
- * - Citizen ki language detect karo
- * - Usi language mein empathetic response do
- * - ASHA notify hogi — ye bhi message mein batao
  */
 const analyzeSymptoms = async ({ symptoms, patientProfile }) => {
   const { age = 30, gender = "M" } = patientProfile || {};
@@ -70,32 +101,38 @@ RISK GUIDELINES:
 - High: Chest pain, breathing difficulty, unconsciousness, severe bleeding, high fever with rash
 `.trim();
 
-  const result = await model.generateContent(prompt);
-  const rawContent = result.response.text().trim();
+  const rawContent = await callHuggingFace(prompt);
 
-  // JSON parse karo
+  // JSON parse
   try {
     const cleaned = rawContent
       .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
 
-    const parsed = JSON.parse(cleaned);
+    // Find the first { and last }
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+
+    if (firstBrace === -1 || lastBrace === -1) throw new Error("No JSON found");
+
+    const jsonStr = cleaned.substring(firstBrace, lastBrace + 1);
+    const parsed = JSON.parse(jsonStr);
 
     return {
-      risk:                   parsed.risk                   || "Low",
-      statement:              parsed.statement              || "",
-      potentialCondition:     parsed.potentialCondition     || "Unknown",
-      potentialConditionLocal:parsed.potentialConditionLocal|| parsed.potentialCondition || "",
-      reasoning:              parsed.reasoning              || "",
-      homeCare:               parsed.homeCare               || [],
-      disclaimer:             parsed.disclaimer             || "",
-      ashaMessage:            parsed.ashaMessage            || `Citizen reported: ${symptoms}`,
-      language:               parsed.language               || detectedLanguage,
-      urgency:                parsed.urgency                || "routine",
+      risk: parsed.risk || "Low",
+      statement: parsed.statement || "",
+      potentialCondition: parsed.potentialCondition || "Unknown",
+      potentialConditionLocal: parsed.potentialConditionLocal || parsed.potentialCondition || "",
+      reasoning: parsed.reasoning || "",
+      homeCare: parsed.homeCare || [],
+      disclaimer: parsed.disclaimer || "",
+      ashaMessage: parsed.ashaMessage || `Citizen reported: ${symptoms}`,
+      language: parsed.language || detectedLanguage,
+      urgency: parsed.urgency || "routine",
     };
   } catch (parseError) {
-    console.error("❌ Gemini JSON parse failed. Raw output:\n", rawContent);
+    console.error("❌ JSON parse failed. Raw output:\n", rawContent);
     throw new Error("AI returned invalid format. Please try again.");
   }
 };

@@ -16,6 +16,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ToastAction } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +43,7 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
 // AI & API
 // AI & API
@@ -161,6 +170,8 @@ const AIHealthQuery = ({ setResult, onVoiceClick, userAge = 35, userGender = 'M'
   const [files, setFiles] = useState([]); // 📂 File State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
+  // 🗣️ Auto-TTS
+  const { speak } = useTextToSpeech();
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -223,6 +234,11 @@ const AIHealthQuery = ({ setResult, onVoiceClick, userAge = 35, userGender = 'M'
       // 3️⃣  Update UI with Backend Response
       if (responseData.status === "success") {
         setResult(responseData); // Set the full structured response
+
+        // 🔊 Auto-speak
+        if (responseData.user_message?.description) {
+          speak(responseData.user_message.description);
+        }
 
         toast({
           title: responseData.user_message?.title || "Query Submitted",
@@ -730,6 +746,39 @@ const VitalsCard = ({ t, vitals, setVitals, isDiabetic, setIsDiabetic }) => {
    🔹 AI RESULT DISPLAY COMPONENT
    ======================================== */
 const AIResult = ({ result }) => {
+  // 🗣️ Text-to-Speech Hook
+  const { speak, stop, isSpeaking } = useTextToSpeech();
+
+  const getReadableText = (res) => {
+    if (!res) return "";
+    let text = "";
+    // Read title and description only (NOT risk level)
+    if (res.user_message?.title) text += res.user_message.title + ". ";
+    if (res.user_message?.description) text += res.user_message.description + ". ";
+    if (res.risk_level === 'HIGH') {
+      text += "Immediate Medical Attention Required.";
+    }
+    return text;
+  };
+
+  useEffect(() => {
+    const text = getReadableText(result);
+    if (text) {
+      const timer = setTimeout(() => speak(text), 500);
+      return () => clearTimeout(timer);
+    }
+    return () => stop();
+  }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleSpeech = () => {
+    if (isSpeaking) {
+      stop();
+    } else {
+      const text = getReadableText(result);
+      if (text) speak(text);
+    }
+  };
+
   if (!result) return null;
 
   // Don't show AI details for Manual analysis
@@ -788,6 +837,14 @@ const AIResult = ({ result }) => {
           Case API ID: {result.case_id}
         </div>
 
+        {/* 🗣️ Read Aloud Button */}
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" size="sm" onClick={toggleSpeech} className="gap-2">
+            {isSpeaking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+            {isSpeaking ? "Stop" : "Read Aloud"}
+          </Button>
+        </div>
+
       </CardContent>
 
       {/* High Risk Footer Actions */}
@@ -811,14 +868,7 @@ const AIResult = ({ result }) => {
 /* ========================================
    🔹 HISTORY DETAILS MODAL
    ======================================== */
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+
 
 const HistoryDetailsModal = ({ isOpen, onClose, data }) => {
   if (!data) return null;

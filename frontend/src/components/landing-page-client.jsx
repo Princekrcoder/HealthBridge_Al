@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { User, Users, Stethoscope, Shield, Building2, UserPlus } from "lucide-react";
@@ -7,19 +8,27 @@ import { LoginModal } from "./login-modal";
 import { Button } from "./ui/button";
 import { getTranslation } from "@/lib/translations";
 
-export default function LandingPageClient() {
+function LandingPageInner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState("Citizen");
   const [language, setLanguage] = useState("en");
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedLang = localStorage.getItem("app-language");
-      if (storedLang) {
-        setLanguage(storedLang);
-      }
+      if (storedLang) setLanguage(storedLang);
     }
   }, []);
+
+  // Auto-open login modal if ?role= is in URL (e.g. when redirected from a protected page)
+  useEffect(() => {
+    const roleParam = searchParams.get("role");
+    if (roleParam) {
+      setSelectedRole(roleParam);
+      setIsModalOpen(true);
+    }
+  }, [searchParams]);
 
   const t = (key) => getTranslation(language, key);
 
@@ -109,5 +118,13 @@ export default function LandingPageClient() {
       </div>
       <LoginModal open={isModalOpen} onOpenChange={setIsModalOpen} role={selectedRole} />
     </>
+  );
+}
+
+export default function LandingPageClient() {
+  return (
+    <Suspense fallback={null}>
+      <LandingPageInner />
+    </Suspense>
   );
 }

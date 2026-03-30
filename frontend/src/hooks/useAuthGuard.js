@@ -16,14 +16,14 @@ export function useAuthGuard(expectedRole) {
     // ❌ Not logged in
     if (!token || !role) {
       logout();
-      router.replace("/login");
+      router.replace("/select-role");
       return;
     }
 
     // ⏰ Token expired
     if (isTokenExpired(token)) {
       logout();
-      router.replace("/login");
+      router.replace("/select-role");
       return;
     }
 
@@ -33,7 +33,7 @@ export function useAuthGuard(expectedRole) {
     const normalizedActual = backendRoles[role] || role.toLowerCase();
 
     if (normalizedActual !== normalizedExpected) {
-      router.replace("/login");
+      router.replace("/select-role");
     }
   }, [expectedRole, router]);
 }
