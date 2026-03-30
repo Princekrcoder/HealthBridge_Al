@@ -1,67 +1,124 @@
-# SehatSetu 🩺
+<div align="center">
 
-**SehatSetu** is a modern, full-stack healthcare platform designed to bridge the gap between citizens (rural/urban) and healthcare providers. It provides a secure, role-based ecosystem to manage health records, facilitate communication, and manage healthcare operations efficiently.
+# 🏥 SehatSetu AI — HealthBridge AI
+
+**Bridging the gap between citizens and healthcare through intelligent, role-based digital health management.**
+
+[![Node.js](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-green?style=for-the-badge&logo=node.js)](https://nodejs.org)
+[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2014-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-316192?style=for-the-badge&logo=postgresql)](https://www.postgresql.org)
+[![Python](https://img.shields.io/badge/AI%20Model-Python%203-blue?style=for-the-badge&logo=python)](https://www.python.org)
+[![AWS S3](https://img.shields.io/badge/Storage-AWS%20S3-FF9900?style=for-the-badge&logo=amazon-aws)](https://aws.amazon.com/s3/)
+
+</div>
 
 ---
 
-## 🏗️ Architecture & Tech Stack
+## 📖 About
 
-The project is divided into two main components: an interactive **Frontend** client and a robust **Backend** API service.
+**SehatSetu AI** (meaning *"Health Bridge"*) is a full-stack, AI-powered healthcare platform designed to digitize and streamline healthcare delivery — especially in rural and semi-urban India. It connects **citizens**, **ASHA workers**, **doctors**, **sub-centers**, and **clinical facilities** under one secure, role-based ecosystem.
 
-### 🎨 Frontend
-- **Framework:** Next.js (App Router)
-- **Styling:** Tailwind CSS
-- **UI Components:** Shadcn UI (Radix UI), Lucide React (Icons)
-- **Form Handling & Validation:** React Hook Form + Zod
-- **Data Visualization:** Recharts
-- **Key Modules:**
-  - `admin/`: System-wide administration dashboard.
-  - `asha/`: Dashboard for ASHA workers to manage local community health.
-  - `citizen/`: Personal health portal for patients/citizens.
-  - `doctor/`: Remote assessment and clinical dashboard for medical professionals.
-  - `clinical/` & `sub-center/`: Local healthcare facility management.
+The AI module uses trained machine learning models (XGBoost, Random Forest, SVM, Logistic Regression, LSTM) on a large Indian healthcare symptom-disease dataset to predict likely illnesses from symptoms.
 
-### ⚙️ Backend
-- **Framework:** Node.js with Express.js
-- **Database:** PostgreSQL (using `pg` driver)
-- **Authentication:** JSON Web Tokens (JWT) & bcryptjs for password hashing.
-- **File Storage:** AWS S3 (`@aws-sdk/client-s3`) for secure medical record and image storage.
-- **Key Services:**
-  - **Auth Service:** Secure login and registration.
-  - **Role-Based Access Control (RBAC):** Middleware to restrict routing based on user roles (`admin`, `asha`, `doctor`, `citizen`, `sub-center`, `clinical`).
-  - **Dashboard APIs:** Data feeding to the Next.js frontend interfaces.
-  - **Health Query Service:** Processing queries and health data storage.
+---
+
+## 🏗️ Project Architecture
+
+```
+SehatSetu AI/
+├── frontend/          # Next.js 14 App Router (React UI)
+├── backend/           # Node.js + Express REST API
+├── training/          # Python ML pipeline (training, evaluation, prediction)
+│   └── models/        # Trained model files (.pkl, .keras)
+├── Final_Augmented_dataset_Diseases_and_Symptoms.csv   # Primary training dataset
+└── Indian-Healthcare-Symptom-Disease-Dataset.csv       # Secondary dataset
+```
 
 ---
 
 ## ✨ Key Features
 
-1. **Role-Based Workflows:** 
-   Tailored dashboards for 6 distinct user roles, ensuring the right person sees the right data.
-2. **Secure Patient Data:** 
-   Healthcare records are stored in PostgreSQL with sensitive files securely stored in AWS S3.
-3. **Interactive Dashboards:** 
-   Real-time reporting and charts using Recharts.
-4. **ASHA Worker Integration:** 
-   Empowers ground-level health workers (ASHA) to digitize citizen health data effectively.
-5. **RESTful Architecture:** 
-   Modular Backend API design making the system scalable and easy to maintain.
+| Feature | Description |
+|--------|-------------|
+| 🔐 **Role-Based Access Control** | 6 roles: Admin, ASHA, Doctor, Citizen, Sub-Center, Clinical |
+| 🤖 **AI Disease Prediction** | ML models predict diseases from patient symptoms |
+| 📋 **Health Records Management** | Secure storage of patient visits, vitals, and queries |
+| ☁️ **Cloud File Storage** | Medical documents stored securely on AWS S3 |
+| 📊 **Interactive Dashboards** | Real-time analytics with charts (Recharts) |
+| 🔒 **JWT Authentication** | Secure, token-based session management |
+| 📡 **SSE (Server-Sent Events)** | Real-time updates pushed to the frontend |
 
 ---
 
-## 🚀 Setup & Installation
+## 🎨 Frontend
 
-### Prerequisites
-- Node.js (v18+)
-- PostgreSQL Database
-- AWS S3 Bucket Credentials
+Built with **Next.js 14** (App Router) and **Tailwind CSS**.
 
-### 1. Backend Setup
+### Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| Next.js 14 | React framework with App Router |
+| Tailwind CSS | Utility-first styling |
+| Shadcn UI / Radix UI | Accessible component library |
+| Lucide React | Icon set |
+| React Hook Form + Zod | Form handling and schema validation |
+| Recharts | Data visualization & charts |
+
+### Role-Based Modules
+
+- **`admin/`** — System administration, user management, platform-wide analytics
+- **`asha/`** — ASHA worker dashboard for community health data entry
+- **`citizen/`** — Personal health portal for patients
+- **`doctor/`** — Remote assessment and clinical review dashboard
+- **`clinical/`** — Clinical facility management
+- **`sub-center/`** — Sub-center healthcare facility portal
+
+### Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+# Available at http://localhost:9002
+```
+
+---
+
+## ⚙️ Backend
+
+Built with **Node.js + Express.js**, connected to **PostgreSQL**.
+
+### Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| Node.js + Express | REST API server |
+| PostgreSQL (`pg`) | Relational database |
+| JWT + bcryptjs | Auth & password hashing |
+| AWS SDK v3 (`@aws-sdk/client-s3`) | File storage on AWS S3 |
+| SSE (`sseManager.js`) | Real-time server-sent events |
+
+### API Routes
+
+| Route File | Endpoints |
+|---|---|
+| `auth.js` | Login, Register |
+| `dashboard.js` | Role-specific dashboard data |
+| `health-query.js` | Symptom queries & AI prediction calls |
+| `symptoms.js` | Symptom management |
+| `visits.js` | Patient visit records |
+| `vitals.js` | Patient vitals |
+
+### Setup
+
 ```bash
 cd backend
 npm install
 ```
-**Environment Variables (`backend/.env`):**
+
+**Create `backend/.env`:**
+
 ```env
 PORT=5000
 DB_HOST=localhost
@@ -69,26 +126,146 @@ DB_PORT=5432
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 DB_NAME=sehatsetu_db
-JWT_SECRET=your_super_secret_key
-# AWS S3 Credentials...
+JWT_SECRET=your_jwt_secret_key
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+AWS_REGION=your_region
+S3_BUCKET_NAME=your_bucket
 ```
-**Run Server:**
+
+**Run:**
+
 ```bash
+node server.js
+# or
 npm run dev
-# OR
+```
+
+---
+
+## 🤖 AI / ML Module
+
+The `training/` directory hosts the full ML pipeline for disease prediction.
+
+### Models Trained
+
+| Model | File |
+|---|---|
+| ✅ Best Model (Ensemble) | `best_model.pkl` |
+| Random Forest | `random_forest.pkl` |
+| XGBoost | `xgboost.pkl` |
+| SVM | `svm.pkl` |
+| Logistic Regression | `logistic_regression.pkl` |
+| LSTM (Deep Learning) | `lstm_model.keras` |
+
+### Pipeline Scripts
+
+| Script | Description |
+|---|---|
+| `preprocess_data.py` | Cleans and encodes the dataset |
+| `train_model.py` | Trains a single model |
+| `train_all_models.py` | Trains all models and saves them |
+| `evaluate_models.py` | Evaluates and compares model performance |
+| `predict_model.py` | Runs prediction given symptoms input |
+
+### Dataset
+
+- **`Final_Augmented_dataset_Diseases_and_Symptoms.csv`** — 190MB+ augmented dataset of diseases and symptoms
+- **`Indian-Healthcare-Symptom-Disease-Dataset.csv`** — Focused Indian healthcare dataset
+
+### Run Prediction
+
+```bash
+cd training
+pip install -r requirements.txt
+python predict_model.py
+```
+
+---
+
+## 🚀 Full-Stack Setup Guide
+
+### Prerequisites
+
+- Node.js v18+
+- Python 3.9+
+- PostgreSQL
+- AWS S3 Bucket
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Princekrcoder/HealthBridge_Al.git
+cd HealthBridge_Al
+```
+
+### 2. Start Backend
+
+```bash
+cd backend
+npm install
+# configure .env
 node server.js
 ```
 
-### 2. Frontend Setup
+### 3. Start Frontend
+
 ```bash
 cd frontend
 npm install
-```
-**Run Frontend Server:**
-```bash
 npm run dev
 ```
-The frontend will be available at `http://localhost:9002` (configurable via package.json).
+
+### 4. Run AI Prediction
+
+```bash
+cd training
+pip install -r requirements.txt
+python predict_model.py
+```
 
 ---
-*Built with ❤️ for accessible healthcare.*
+
+## 🗂️ Database Schema (Overview)
+
+The PostgreSQL database manages:
+
+- **Users** — with roles (`admin`, `asha`, `doctor`, `citizen`, `sub-center`, `clinical`)
+- **Health Records** — visits, vitals, health queries
+- **ASHA-Citizen Assignments** — linking ASHA workers to their assigned citizens
+
+Initialize with:
+
+```bash
+cd backend
+node seed.js
+```
+
+---
+
+## 👥 User Roles
+
+| Role | Description |
+|---|---|
+| 🛡️ Admin | Full platform control |
+| 🌿 ASHA Worker | Community health data collection |
+| 👨‍⚕️ Doctor | Remote clinical assessment |
+| 🧑 Citizen | Personal health records |
+| 🏥 Clinical | Clinical facility operations |
+| 🏢 Sub-Center | Sub-center management |
+
+---
+
+## 📄 License
+
+This project is for **educational and academic purposes**.
+
+---
+
+<div align="center">
+
+Built with ❤️ for accessible healthcare in India 🇮🇳
+
+**SehatSetu AI — HealthBridge AI**
+
+</div>
