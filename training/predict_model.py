@@ -166,7 +166,25 @@ def predict_disease(symptom_text, top_n=5):
                 for name, imp in active_features[:5]:
                     print(f"   - {name}: importance = {imp:.4f}")
 
-    return top_disease
+    predictions = []
+    for idx in top_indices:
+        predictions.append({
+            "disease": le.classes_[idx],
+            "confidence": float(proba[idx] * 100)
+        })
+
+    key_symptoms = []
+    if 'active_features' in locals() and active_features:
+        for name, imp in active_features[:5]:
+            key_symptoms.append({"name": name, "importance": float(imp)})
+
+    return {
+        "top_disease": top_disease,
+        "matched_symptoms": matched,
+        "unmatched_symptoms": unmatched,
+        "predictions": predictions,
+        "key_symptoms": key_symptoms
+    }
 
 
 # ============================================================================

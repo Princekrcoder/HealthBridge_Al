@@ -77,7 +77,7 @@ app.get(
   }
 );
 
-// 🔒 Only ASHA role
+//  Only ASHA role
 app.get(
   "/api/asha-only",
   authMiddleware,

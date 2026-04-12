@@ -199,32 +199,38 @@ if PLOTTING:
 
     rf_path = os.path.join(MODELS_DIR, 'random_forest.pkl')
     if os.path.exists(rf_path):
-        rf_pipeline = joblib.load(rf_path)
-        rf_model = rf_pipeline.named_steps['clf']
+        try:
+            rf_pipeline = joblib.load(rf_path)
+            rf_model = rf_pipeline.named_steps['clf']
+        except Exception as e:
+            print(f"   ⚠️ Could not load Random Forest model: {e}. Skipping feature importance.")
+            rf_pipeline = None
+            rf_model = None
 
-        # Load encodings for feature names
-        with open("e:/SehatSetu AI/training/label_encodings.json", 'r', encoding='utf-8') as f:
-            enc = json.load(f)
-
-        feature_names = enc['symptoms'] + ['avg_severity', 'symptom_count']
-        importances = rf_model.feature_importances_
-
-        # Top 25 features
-        top_n = 25
-        top_indices = np.argsort(importances)[-top_n:]
-        top_features = [feature_names[i] for i in top_indices]
-        top_importances = importances[top_indices]
-
-        fig, ax = plt.subplots(figsize=(10, 8))
-        ax.barh(top_features, top_importances, color='#4CAF50')
-        ax.set_xlabel('Importance', fontsize=12)
-        ax.set_title('Top 25 Most Important Symptoms (Random Forest)', fontsize=14, fontweight='bold')
-        plt.tight_layout()
-
-        fi_path = os.path.join(RESULTS_DIR, 'feature_importance_rf.png')
-        plt.savefig(fi_path, dpi=150, bbox_inches='tight')
-        plt.close()
-        print(f"   ✅ Feature importance saved: {fi_path}")
+        if rf_model is not None:
+            # Load encodings for feature names
+            with open("e:/SehatSetu AI/training/label_encodings.json", 'r', encoding='utf-8') as f:
+                enc = json.load(f)
+    
+            feature_names = enc['symptoms'] + ['avg_severity', 'symptom_count']
+            importances = rf_model.feature_importances_
+    
+            # Top 25 features
+            top_n = 25
+            top_indices = np.argsort(importances)[-top_n:]
+            top_features = [feature_names[i] for i in top_indices]
+            top_importances = importances[top_indices]
+    
+            fig, ax = plt.subplots(figsize=(10, 8))
+            ax.barh(top_features, top_importances, color='#4CAF50')
+            ax.set_xlabel('Importance', fontsize=12)
+            ax.set_title('Top 25 Most Important Symptoms (Random Forest)', fontsize=14, fontweight='bold')
+            plt.tight_layout()
+    
+            fi_path = os.path.join(RESULTS_DIR, 'feature_importance_rf.png')
+            plt.savefig(fi_path, dpi=150, bbox_inches='tight')
+            plt.close()
+            print(f"   ✅ Feature importance saved: {fi_path}")
 
 # ============================================================================
 # STEP 7: Training Time Comparison

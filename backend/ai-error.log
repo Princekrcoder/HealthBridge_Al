@@ -459,3 +459,51 @@ Stack: TypeError: fetch failed
     at async E:\SehatSetu AI\backend\routes\health-query.js:74:30
 Details: {}
 ---
+Date: 2026-04-06T07:10:55.075Z
+Error: Missing Groq API Key (gork_api)
+Stack: Error: Missing Groq API Key (gork_api)
+    at analyzeHealthQuery (E:\SehatSetu AI\backend\services\ai-service.js:61:24)
+    at E:\SehatSetu AI\backend\routes\health-query.js:74:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+Details: {}
+---
+Date: 2026-04-06T07:11:46.476Z
+Error: Missing Groq API Key (gork_api)
+Stack: Error: Missing Groq API Key (gork_api)
+    at analyzeHealthQuery (E:\SehatSetu AI\backend\services\ai-service.js:61:24)
+    at E:\SehatSetu AI\backend\routes\health-query.js:74:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+Details: {}
+---
+Date: 2026-04-06T07:12:12.734Z
+Error: Missing Groq API Key (gork_api)
+Stack: Error: Missing Groq API Key (gork_api)
+    at analyzeHealthQuery (E:\SehatSetu AI\backend\services\ai-service.js:61:24)
+    at E:\SehatSetu AI\backend\routes\health-query.js:74:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+Details: {}
+---
+Date: 2026-04-06T07:12:28.933Z
+Error: Missing Groq API Key (gork_api)
+Stack: Error: Missing Groq API Key (gork_api)
+    at analyzeHealthQuery (E:\SehatSetu AI\backend\services\ai-service.js:61:24)
+    at E:\SehatSetu AI\backend\routes\health-query.js:74:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+Details: {}
+---
+Date: 2026-04-10T06:24:50.299Z
+Error: Missing Groq API Key (gork_api)
+Stack: Error: Missing Groq API Key (gork_api)
+    at analyzeHealthQuery (E:\SehatSetu AI\backend\services\ai-service.js:61:24)
+    at E:\SehatSetu AI\backend\routes\health-query.js:74:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+Details: {}
+---
+Date: 2026-04-10T06:37:50.189Z
+Error: Missing Groq API Key (gork_api)
+Stack: Error: Missing Groq API Key (gork_api)
+    at analyzeHealthQuery (E:\SehatSetu AI\backend\services\ai-service.js:61:24)
+    at E:\SehatSetu AI\backend\routes\health-query.js:74:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+Details: {}
+---

@@ -155,14 +155,10 @@ const PatientActions = ({ patient, onViewDetails }) => (
   </DropdownMenu>
 );
 
-/* ========================================
-   🔹 AREA PATIENT LIST COMPONENT
-   ======================================== */
 const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQuery, citizens }) => {
   const filteredPatients = useMemo(() => {
     let filtered = citizens || [];
 
-    // Apply active filter
     if (activeFilter) {
       switch (activeFilter) {
         case 'high-risk':

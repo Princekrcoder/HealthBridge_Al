@@ -1,2 +1,6 @@
-﻿[dotenv@17.2.4] injecting env (12) from .env -- tip: ΓÜÖ∩╕Å  suppress all logs with { quiet: true }
-≡ƒñû Testing Gemini AI Service...
+﻿Citizen Portal: citizen@test.com 
+ASHA Portal: asha@test.com 
+Doctor Portal: doctor@test.com
+Sub-Center Portal: subcenter@test.com
+Clinical Portal: clinical@test.com
+Admin Portal: admin@test.com
