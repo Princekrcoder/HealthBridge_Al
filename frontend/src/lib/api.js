@@ -1,14 +1,7 @@
-export async function fetchDashboardData(role) {
-  const token = localStorage.getItem("token");
+import { apiFetch } from "@/lib/api-client";
 
-  const res = await fetch(
-    `http://localhost:5000/api/dashboard/${role}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+export async function fetchDashboardData(role) {
+  const res = await apiFetch(`/api/dashboard/${role}`);
 
   if (!res.ok) {
     throw new Error("Failed to fetch dashboard data");
@@ -18,13 +11,7 @@ export async function fetchDashboardData(role) {
 }
 
 export async function fetchDashboardSummary() {
-  const token = localStorage.getItem("token");
-
-  const res = await fetch("http://localhost:5000/api/dashboard/summary", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const res = await apiFetch("/api/dashboard/summary");
 
   if (!res.ok) {
     throw new Error("Failed to fetch dashboard summary");

@@ -8,6 +8,8 @@ require("dotenv").config();
 // ================================
 const express = require("express");
 const cors = require("cors");
+const session = require("express-session");
+const connectPgSimple = require("connect-pg-simple");
 const pool = require("./db");
 
 // Middleware imports
@@ -23,12 +25,51 @@ const healthQueryRoutes = require("./routes/health-query"); // ✅ New Route
 // 3️⃣ App initialize
 // ================================
 const app = express();
+const PgSession = connectPgSimple(session);
+const isProduction = process.env.NODE_ENV === "production";
+const frontendOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 // ================================
 // 4️⃣ Global middlewares
 // ================================
-app.use(cors());
+app.set("trust proxy", 1);
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || frontendOrigins.length === 0 || frontendOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS blocked for this origin"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(express.json());
+app.use(
+  session({
+    store: new PgSession({
+      pool,
+      tableName: "user_sessions",
+      createTableIfMissing: true,
+    }),
+    name: process.env.SESSION_COOKIE_NAME || "healthbridge.sid",
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    rolling: true,
+    cookie: {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    },
+  })
+);
 
 // ================================
 // 5️⃣ Public routes

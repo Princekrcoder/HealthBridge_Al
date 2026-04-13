@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const targetFile = 'e:\\SehatSetu AI\\frontend\\src\\app\\citizen\\dashboard\\page.jsx';
+const targetFile = 'e:\\HealthBridge_Al\\frontend\\src\\app\\citizen\\dashboard\\page.jsx';
 
 try {
     let content = fs.readFileSync(targetFile, 'utf8');

@@ -65,7 +65,7 @@ const CitizenDashboardHeader = ({ userName = "Prince", t }) => {
             <div className="relative w-12 h-12 flex-shrink-0">
               <Image
                 src="/icon.png"
-                alt="HealthBridge AI Logo"
+                alt="HealthBridge_Al Logo"
                 fill
                 className="object-contain"
                 priority
@@ -73,7 +73,7 @@ const CitizenDashboardHeader = ({ userName = "Prince", t }) => {
             </div>
             <div className="flex flex-col">
               <span className="font-black text-lg tracking-tighter text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text">
-                HealthBridge AI
+                HealthBridge_Al
               </span>
             </div>
           </Link>

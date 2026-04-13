@@ -1,4 +1,4 @@
-# **App Name**: HealthBridge AI
+# **App Name**: HealthBridge_Al
 
 ## Core Features:
 

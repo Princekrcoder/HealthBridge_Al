@@ -1,4 +1,4 @@
-# 🎤 Viva Preparation Guide: SehatSetu (Frontend & Backend)
+# 🎤 Viva Preparation Guide: HealthBridge (Frontend & Backend)
 
 *(Yeh script aur points design kiye gaye hain taaki aap apne project ke Frontend aur Backend architecture ko asani se apni Ma'am ko samjha sakein, AI part ko avoid karte hue.)*
 
@@ -7,7 +7,7 @@
 ## 1. Project Overview (Introduction)
 
 **Ma'am / Sir ko kya bolna hai:**
-"Good morning Ma'am. Mera project **SehatSetu** hai. Yeh ek full-stack healthcare management platform hai. Iska main goal hai citizens (khaskar rural areas) ko doctors aur ASHA workers ke saath connect karna. Is project mein maine ek scalable aur secure web application banayi hai jisme 6 alag-alag user roles hain: Admin, ASHA worker, Citizen, Doctor, Clinical, aur Sub-Center."
+"Good morning Ma'am. Mera project **HealthBridge** hai. Yeh ek full-stack healthcare management platform hai. Iska main goal hai citizens (khaskar rural areas) ko doctors aur ASHA workers ke saath connect karna. Is project mein maine ek scalable aur secure web application banayi hai jisme 6 alag-alag user roles hain: Admin, ASHA worker, Citizen, Doctor, Clinical, aur Sub-Center."
 
 ---
 

@@ -1,8 +1,9 @@
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { Providers } from "@/components/providers";
 import { cn } from "@/lib/utils";
 export const metadata = {
-    title: "HealthBridge AI",
+    title: "HealthBridge_Al",
     description: "Your Bridge to Better Health",
 };
 export default function RootLayout({ children, }) {
@@ -13,7 +14,7 @@ export default function RootLayout({ children, }) {
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet"/>
       </head>
       <body className={cn("font-body antialiased")}>
-        {children}
+        <Providers>{children}</Providers>
         <Toaster />
       </body>
     </html>);

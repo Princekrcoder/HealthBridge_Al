@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { roles, roleRoutes, roleDisplayNames, frontendRoles } from "@/lib/types";
 import { useEffect, useState } from "react";
-import { setToken, setRole } from "@/lib/auth";
+import { setRole } from "@/lib/auth";
+import { useAuth } from "@/contexts/auth-context";
 import { getTranslation } from "@/lib/translations"; // 👈 Added import
 const formSchema = z.object({
   role: z.enum(roles),
@@ -23,6 +24,7 @@ const formSchema = z.object({
 export function LoginModal({ open, onOpenChange, role }) {
   const router = useRouter();
   const { toast } = useToast();
+  const { login } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false); // 👈 New state for redirect loader
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -46,26 +48,12 @@ export function LoginModal({ open, onOpenChange, role }) {
         password: values.password,
       };
 
-      const res = await fetch("http://localhost:5000/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Login failed");
-      }
+      const user = await login(payload);
 
       // Success
-      setToken(data.token);
-
       // Backend returns role in user object (e.g., "asha", "citizen").
       // Convert to frontend display name (e.g., "ASHA Worker", "Citizen")
-      const backendRole = data.user.role;
+      const backendRole = user.role;
       const displayRole = frontendRoles[backendRole] || backendRole;
       setRole(displayRole);
 
@@ -113,7 +101,7 @@ export function LoginModal({ open, onOpenChange, role }) {
   }
 
   return (<Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-4xl p-0 rounded-[30px] grid md:grid-cols-2 overflow-hidden">
+    <DialogContent className="max-w-4xl p-0 rounded-[30px] grid grid-cols-1 md:grid-cols-2 overflow-hidden w-[95vw] md:w-full">
       <div className="hidden md:flex flex-col justify-center p-12 bg-gradient-to-br from-gray-900 to-primary/90 text-white">
         <h2 className="text-3xl font-bold">{t(`roles.${role} `) || roleDisplayNames[role]} Login</h2>
         <p className="mt-4 text-white/80">{t("login.privacyText")}</p>
@@ -121,7 +109,7 @@ export function LoginModal({ open, onOpenChange, role }) {
           ● {t("login.secureServer")}
         </div>
       </div>
-      <div className="p-12">
+      <div className="p-5 sm:p-8 md:p-12">
         <DialogHeader className="mb-6">
           <DialogTitle className="text-3xl font-bold">
             {t("login.signIn")}

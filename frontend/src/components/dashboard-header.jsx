@@ -21,7 +21,7 @@ export default function DashboardHeader({ role }) {
           <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-white/50 shadow-sm overflow-hidden p-1.5 ring-1 ring-black/5">
             <Image
               src="/icon.png"
-              alt="HealthBridge AI Logo"
+              alt="HealthBridge_Al Logo"
               fill
               className="object-contain"
               priority
@@ -30,7 +30,7 @@ export default function DashboardHeader({ role }) {
         </div>
         <div className="flex flex-col">
           <span className="font-black text-lg tracking-tighter text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text">
-            HealthBridge AI
+            HealthBridge_Al
           </span>
         </div>
       </Link>

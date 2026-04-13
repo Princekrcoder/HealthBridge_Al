@@ -1,18 +1,15 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
+
 export function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  return null;
 }
 
-export function setToken(token) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("token", token);
-}
+export function setToken() {}
 
 export function removeToken() {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("token");
+  return null;
 }
 
 export function getRole() {
@@ -22,8 +19,6 @@ export function getRole() {
 
 export function setRole(role) {
   if (typeof window === "undefined") return;
-  // Normalize role to lowercase to match backend/convention if needed, 
-  // but keeping it as is for now based on current usage.
   localStorage.setItem("role", role);
 }
 
@@ -32,7 +27,8 @@ export function removeRole() {
   localStorage.removeItem("role");
 }
 
-export function logout() {
+export async function logout() {
+  await apiFetch("/api/logout", { method: "POST" }).catch(() => null);
   removeToken();
   removeRole();
   if (typeof window !== "undefined") {
@@ -41,6 +37,6 @@ export function logout() {
 }
 
 export function isAuthenticated() {
-  const token = getToken();
-  return !!token;
+  const role = getRole();
+  return !!role;
 }

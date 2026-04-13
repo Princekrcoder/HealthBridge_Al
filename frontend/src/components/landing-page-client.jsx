@@ -79,7 +79,7 @@ function LandingPageInner() {
             <div className="relative w-24 h-24 flex-shrink-0">
               <Image
                 src="/icon.png"
-                alt="HealthBridge AI Logo"
+                alt="HealthBridge_Al Logo"
                 fill
                 className="object-contain"
                 priority

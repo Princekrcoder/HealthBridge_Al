@@ -1,9 +1,9 @@
-# SehatSetu AI (HealthBridge AI) Project Report
+# HealthBridge_Al (HealthBridge_Al) Project Report
 
 ---
 
 ## Abstract
-SehatSetu AI is a full‑stack healthcare management platform designed to bridge the gap between citizens in rural areas and healthcare professionals such as doctors and ASHA workers. The system provides role‑based access for six distinct user types (Admin, ASHA Worker, Citizen, Doctor, Clinical, Sub‑Center) and integrates secure authentication, PostgreSQL data storage, and AWS S3 for medical record handling.
+HealthBridge_Al is a full‑stack healthcare management platform designed to bridge the gap between citizens in rural areas and healthcare professionals such as doctors and ASHA workers. The system provides role‑based access for six distinct user types (Admin, ASHA Worker, Citizen, Doctor, Clinical, Sub‑Center) and integrates secure authentication, PostgreSQL data storage, and AWS S3 for medical record handling.
 
 ---
 
@@ -105,7 +105,7 @@ CREATE TABLE health_updates (
 ---
 
 ## 7. Conclusion & Future Scope
-SehatSetu AI demonstrates a modern, secure, and role‑centric approach to rural healthcare delivery. Future enhancements could include:
+HealthBridge_Al demonstrates a modern, secure, and role‑centric approach to rural healthcare delivery. Future enhancements could include:
 - **Machine Learning** – Predictive health risk models (training pipeline resides in `training/` directory).
 - **Offline Support** – Service workers for ASHA workers with intermittent connectivity.
 - **Telemedicine Integration** – Video call APIs for remote consultations.

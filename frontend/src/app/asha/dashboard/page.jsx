@@ -37,12 +37,12 @@ import { useToast } from "@/hooks/use-toast";
 import { analyzeSymptoms as analyzeSymptomsForAsha } from "@/lib/analyze-client";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useLanguage } from "@/hooks/useLanguage";
+import { API_BASE_URL } from "@/lib/config";
 
 // 🔑 Authenticated fetch helper
 async function authFetch(url) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
   });
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
   return res.json();
@@ -955,12 +955,10 @@ export default function AshaDashboard() {
   useEffect(() => {
     loadCitizens(false); // initial load
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) return;
-
     // Open SSE stream
     const evtSource = new EventSource(
-      `http://localhost:5000/api/dashboard/asha/live?token=${encodeURIComponent(token)}`
+      `${API_BASE_URL}/api/dashboard/asha/live`,
+      { withCredentials: true }
     );
 
     evtSource.onmessage = (e) => {
@@ -1000,7 +998,7 @@ export default function AshaDashboard() {
     setIsLoadingQueries(true);
     try {
       const data = await authFetch(
-        `http://localhost:5000/api/dashboard/asha/citizen/${patient.id}/queries`
+        `${API_BASE_URL}/api/dashboard/asha/citizen/${patient.id}/queries`
       );
       setCitizenQueries(data.queries || []);
     } catch (err) {

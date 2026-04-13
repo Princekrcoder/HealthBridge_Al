@@ -33,7 +33,7 @@ export default function LanguageSelectionPage() {
                             <div className="relative w-24 h-24 md:w-32 md:h-32 flex-shrink-0">
                                 <Image
                                     src="/icon.png"
-                                    alt="HealthBridge AI Logo"
+                                    alt="HealthBridge_Al Logo"
                                     fill
                                     className="object-contain"
                                     priority
@@ -42,7 +42,7 @@ export default function LanguageSelectionPage() {
 
                             {/* Brand Name */}
                             <h1 className="text-3xl md:text-6xl font-black tracking-tighter text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text drop-shadow-sm">
-                                HealthBridge AI
+                                HealthBridge_Al
                             </h1>
                         </div>
 
@@ -106,7 +106,7 @@ export default function LanguageSelectionPage() {
                                         About Us
                                     </h3>
                                     <p className="leading-relaxed text-slate-600 dark:text-slate-300">
-                                        HealthBridge AI provides <span className="font-semibold text-primary">free doctor consultations</span>, medicine delivery, and AI symptom analysis for rural communities.
+                                        HealthBridge_Al provides <span className="font-semibold text-primary">free doctor consultations</span>, medicine delivery, and AI symptom analysis for rural communities.
                                     </p>
                                 </div>
 
@@ -142,7 +142,7 @@ export default function LanguageSelectionPage() {
             </main>
 
             <footer className="py-6 text-center text-sm font-medium text-slate-400">
-                © 2026 HealthBridge AI. All rights reserved.
+                © 2026 HealthBridge_Al. All rights reserved.
             </footer>
         </div>
     );

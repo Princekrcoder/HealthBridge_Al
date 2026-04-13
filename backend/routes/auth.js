@@ -1,6 +1,5 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const pool = require("../db");
 
 const router = express.Router();
@@ -31,32 +30,49 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // 3️⃣ JWT token banao
-    const token = jwt.sign(
-      {
-        id: user.id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    // 3️⃣ Session me user snapshot save karo
+    req.session.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      asha_id: user.asha_id,
+      doctor_id: user.doctor_id,
+      sc_id: user.sc_id,
+    };
 
-    // 4️⃣ response bhejo
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        asha_id: user.asha_id,
-        doctor_id: user.doctor_id,
-        sc_id: user.sc_id,
-      },
+    // 4️⃣ Session persist hone ke baad response bhejo
+    req.session.save((saveError) => {
+      if (saveError) {
+        console.error("SESSION SAVE ERROR:", saveError);
+        return res.status(500).json({ message: "Session creation failed" });
+      }
+
+      return res.json({ user: req.session.user });
     });
   } catch (err) {
     console.error("LOGIN ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
+});
+
+router.get("/me", (req, res) => {
+  if (!req.session?.user) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
+  return res.json({ user: req.session.user });
+});
+
+router.post("/logout", (req, res) => {
+  req.session.destroy((error) => {
+    if (error) {
+      console.error("LOGOUT ERROR:", error);
+      return res.status(500).json({ message: "Logout failed" });
+    }
+
+    res.clearCookie(process.env.SESSION_COOKIE_NAME || "healthbridge.sid");
+    return res.json({ message: "Logged out successfully" });
+  });
 });
 
 module.exports = router;

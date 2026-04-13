@@ -1,6 +1,6 @@
 export const translations = {
     en: {
-        appTitle: "HealthBridge AI",
+        appTitle: "HealthBridge_Al",
         tagline: "UNIFIED HEALTHCARE INTELLIGENCE PLATFORM",
         roles: {
             Citizen: "Citizen Portal",
@@ -31,7 +31,7 @@ export const translations = {
             userIdPlaceholder: "Enter your User ID or Mobile",
             passwordLabel: "Password",
             secureServer: "Secure Server Active",
-            privacyText: "HealthBridge AI uses 256-bit encryption to ensure all healthcare data remains private and secure."
+            privacyText: "HealthBridge_Al uses 256-bit encryption to ensure all healthcare data remains private and secure."
         },
         dashboard: {
             welcome: "Welcome",
@@ -75,7 +75,7 @@ export const translations = {
             duration: "Duration",
             selectDuration: "Select duration",
             severity: "Severity",
-            askHealthBridgeAI: "Ask HealthBridge AI",
+            askHealthBridgeAI: "Ask HealthBridge_Al",
             analyzing: "Analyzing...",
             symptomCheck: "Symptom Check",
             uploadReport: "Upload Report",

@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏥 SehatSetu AI — HealthBridge AI
+# 🏥 HealthBridge_Al — HealthBridge_Al
 
 **Bridging the gap between citizens and healthcare through intelligent, role-based digital health management.**
 
@@ -16,7 +16,7 @@
 
 ## 📖 About
 
-**SehatSetu AI** (meaning *"Health Bridge"*) is a full-stack, AI-powered healthcare platform designed to digitize and streamline healthcare delivery — especially in rural and semi-urban India. It connects **citizens**, **ASHA workers**, **doctors**, **sub-centers**, and **clinical facilities** under one secure, role-based ecosystem.
+**HealthBridge_Al** (meaning *"Health Bridge"*) is a full-stack, AI-powered healthcare platform designed to digitize and streamline healthcare delivery — especially in rural and semi-urban India. It connects **citizens**, **ASHA workers**, **doctors**, **sub-centers**, and **clinical facilities** under one secure, role-based ecosystem.
 
 The AI module uses trained machine learning models (XGBoost, Random Forest, SVM, Logistic Regression, LSTM) on a large Indian healthcare symptom-disease dataset to predict likely illnesses from symptoms.
 
@@ -25,7 +25,7 @@ The AI module uses trained machine learning models (XGBoost, Random Forest, SVM,
 ## 🏗️ Project Architecture
 
 ```
-SehatSetu AI/
+HealthBridge_Al/
 ├── frontend/          # Next.js 14 App Router (React UI)
 ├── backend/           # Node.js + Express REST API
 ├── training/          # Python ML pipeline (training, evaluation, prediction)
@@ -125,7 +125,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
-DB_NAME=sehatsetu_db
+DB_NAME=healthbridge_db
 JWT_SECRET=your_jwt_secret_key
 AWS_ACCESS_KEY_ID=your_aws_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret
@@ -266,6 +266,6 @@ This project is for **educational and academic purposes**.
 
 Built with ❤️ for accessible healthcare in India 🇮🇳
 
-**SehatSetu AI — HealthBridge AI**
+**HealthBridge_Al — HealthBridge_Al**
 
 </div>

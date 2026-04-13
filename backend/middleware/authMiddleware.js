@@ -1,6 +1,11 @@
 const jwt = require("jsonwebtoken");
 
 module.exports = function (req, res, next) {
+  if (req.session?.user) {
+    req.user = req.session.user;
+    return next();
+  }
+
   // Accept token from Authorization header OR ?token= query param (needed for SSE/EventSource)
   const authHeader = req.headers.authorization;
   let token = null;

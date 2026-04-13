@@ -18,7 +18,7 @@ export function MedicalLoader() {
 
             {/* Brand Text */}
             <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mb-2">
-                HealthBridge AI
+                HealthBridge_Al
             </h2>
 
             {/* Loading Text */}
