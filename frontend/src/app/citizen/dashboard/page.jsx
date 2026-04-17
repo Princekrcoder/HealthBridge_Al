@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { DIRECT_BACKEND_URL } from "@/lib/config";
 import {
   Bell, LogOut, Languages, Mic, Camera, FileAudio, Video,
   Stethoscope, Upload, UserCircle, MapPin, AlertTriangle,
-  HeartPulse, ChevronRight, Download, Siren, Loader, Send, Loader2, AlertCircle, ImagePlus
+  HeartPulse, ChevronRight, Download, Siren, Loader, Send, Loader2, AlertCircle, ImagePlus,
+  Phone, PhoneOff, Video as VideoIcon
 } from "lucide-react";
 
 // UI Components
@@ -219,11 +222,9 @@ const AIHealthQuery = ({ setResult, onVoiceClick, userAge = 35, userGender = 'M'
       });
 
       // 2️⃣  Submit to Backend (AI Logic is now here)
-      const saveResponse = await fetch("http://localhost:5000/api/health-query", {
+      const saveResponse = await fetch("/api/health-query", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
+        credentials: "include",
         body: formData,
       });
 
@@ -1005,9 +1006,8 @@ const VisitHistory = ({ t, refreshKey }) => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/health-query/history", {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await fetch("/api/health-query/history", {
+          credentials: "include",
         });
 
         if (res.ok) {
@@ -1142,6 +1142,7 @@ const HealthTips = ({ t }) => {
 export default function CitizenDashboard() {
   // 🔒 Authentication Guard
   useAuthGuard("citizen");
+  const router = useRouter();
 
   // 🌐 Language Hook
   const { t } = useLanguage();
@@ -1164,6 +1165,10 @@ export default function CitizenDashboard() {
   // 🔄 History Refresh Trigger
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const refreshHistory = () => setHistoryRefreshKey(prev => prev + 1);
+
+  // 📹 Incoming Screening Call State
+  const [incomingCall, setIncomingCall] = useState(null); // { sessionId, ashaName }
+  const ringtoneRef = useRef(null);
 
   // 📥 Fetch Dashboard Data on Mount
   useEffect(() => {
@@ -1192,6 +1197,59 @@ export default function CitizenDashboard() {
     loadDashboardData();
   }, [toast]);
 
+  // 📡 SSE — Listen for incoming screening invites from ASHA
+  // Robust auto-reconnecting SSE with JWT token auth
+  useEffect(() => {
+    let evtSource = null;
+    let reconnectTimer = null;
+    let destroyed = false;
+
+    const connect = () => {
+      if (destroyed) return;
+
+      const token = localStorage.getItem("healthbridge_token");
+      const sseUrl = token
+        ? `${DIRECT_BACKEND_URL}/api/dashboard/citizen/live?token=${token}`
+        : `/api/dashboard/citizen/live`;
+
+      console.log("📡 Citizen SSE: Connecting...");
+      evtSource = new EventSource(sseUrl, { withCredentials: true });
+
+      evtSource.onopen = () => {
+        console.log("📡 Citizen SSE: Connected ✅");
+      };
+
+      evtSource.onmessage = (e) => {
+        console.log("🔔 SSE Event received:", e.data);
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === "screening_invite") {
+            console.log("✅ Setting incoming call state!", msg);
+            setIncomingCall({ sessionId: msg.sessionId, ashaName: msg.ashaName });
+          }
+        } catch (err) { 
+          console.error("SSE parse error", err);
+        }
+      };
+
+      evtSource.onerror = () => {
+        console.warn("📡 Citizen SSE: Disconnected, reconnecting in 2s...");
+        evtSource.close();
+        if (!destroyed) {
+          reconnectTimer = setTimeout(connect, 2000);
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      destroyed = true;
+      clearTimeout(reconnectTimer);
+      evtSource?.close();
+    };
+  }, []);
+
   // 🎤 Voice Query Handler
   const handleVoiceQueryClick = () => {
     toast({
@@ -1207,6 +1265,59 @@ export default function CitizenDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen bg-secondary/50">
+
+      {/* 📹 INCOMING CALL POPUP */}
+      {incomingCall && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="relative bg-[#0d1117] border border-cyan-500/30 rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-6 w-[320px] sm:w-[380px] animate-in fade-in zoom-in-95 duration-300">
+
+            {/* Pulsing ring animation */}
+            <div className="relative">
+              <span className="absolute inset-0 rounded-full bg-cyan-400/20 animate-ping" />
+              <span className="absolute inset-2 rounded-full bg-cyan-400/10 animate-ping [animation-delay:150ms]" />
+              <div className="relative w-20 h-20 rounded-full bg-cyan-500/10 border-2 border-cyan-500/40 flex items-center justify-center">
+                <VideoIcon className="h-9 w-9 text-cyan-400" />
+              </div>
+            </div>
+
+            {/* Text */}
+            <div className="text-center">
+              <p className="text-white/60 text-sm">Incoming Video Call</p>
+              <p className="text-white font-bold text-xl mt-1">{incomingCall.ashaName}</p>
+              <p className="text-white/50 text-sm mt-1">Your ASHA Worker is calling you</p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-6 mt-2">
+              {/* Decline */}
+              <button
+                onClick={() => setIncomingCall(null)}
+                className="flex flex-col items-center gap-2 group"
+              >
+                <span className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-lg">
+                  <PhoneOff className="h-6 w-6 text-white" />
+                </span>
+                <span className="text-xs text-white/50">Decline</span>
+              </button>
+
+              {/* Accept */}
+              <button
+                onClick={() => {
+                  setIncomingCall(null);
+                  router.push(`/screening/${incomingCall.sessionId}/join`);
+                }}
+                className="flex flex-col items-center gap-2 group"
+              >
+                <span className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center transition-colors shadow-lg animate-pulse">
+                  <Phone className="h-6 w-6 text-white" />
+                </span>
+                <span className="text-xs text-white/50">Accept</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <CitizenDashboardHeader userName={dashboardData?.name || "Prince"} t={t} />
 

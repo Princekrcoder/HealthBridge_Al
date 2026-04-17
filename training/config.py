@@ -37,10 +37,24 @@ GROK_MAX_TOKENS = 300
 # ---------------------------------------------------------------------------
 # 2. BERT MODEL SETTINGS
 # ---------------------------------------------------------------------------
-BERT_MODEL_PATH = "models/bert_healthbridge/final"
-BERT_HIGH_CONFIDENCE = 0.70     # >= this -> trust BERT fully
+# Use the locally trained model shipped in `training/models/bert_sehatsetu/final`.
+BERT_MODEL_PATH = "models/bert_sehatsetu/final"
+BERT_HIGH_CONFIDENCE = 0.75     # > 0.75 -> use BERT fully
 BERT_MID_CONFIDENCE = 0.40      # >= this -> hybrid mode
 # below MID_CONFIDENCE -> keyword fallback
+
+# ---------------------------------------------------------------------------
+# 2.1 Hybrid Decision / Score Tuning
+# ---------------------------------------------------------------------------
+# In hybrid mode we combine:
+#   final = (hybrid_bert_weight * bert_score) + (hybrid_keyword_weight * keyword_score)
+# where bert_score is already in [0,1] (softmax prob) and keyword_score is normalized to [0,1].
+HYBRID_BERT_WEIGHT = 0.7
+HYBRID_KEYWORD_WEIGHT = 0.3
+
+# How many candidates to consider for hybrid ranking.
+HYBRID_TOP_K_BERT = 3
+HYBRID_TOP_K_KEYWORD = 3
 
 # ---------------------------------------------------------------------------
 # 3. SUPPORTED LANGUAGES

@@ -72,17 +72,20 @@ def diagnose(patient_id: str, user_text: str) -> dict:
             method_used       = grok_result["method"]
             bert_disease      = grok_result.get("bert_disease", None)
             bert_conf         = grok_result.get("bert_confidence", 0.0)
+            predictions       = grok_result.get("predictions", [])
         elif NLP_AVAILABLE:
             nlp_result        = predict_and_extract(user_text)
             detected_symptoms = nlp_result["detected_symptoms"]
             method_used       = nlp_result["method"]
             bert_disease      = nlp_result.get("bert_disease", None)
             bert_conf         = nlp_result.get("bert_confidence", 0.0)
+            predictions       = nlp_result.get("predictions", [])
         else:
             detected_symptoms = extract_symptoms(user_text)
             method_used  = "keyword"
             bert_disease = None
             bert_conf    = 0.0
+            predictions  = []
 
         # Step 2 — Extract duration
         duration_days = get_duration(user_text)
@@ -109,7 +112,37 @@ def diagnose(patient_id: str, user_text: str) -> dict:
         history_summary = get_history_summary(patient_id)
 
         # Step 6 — Match diseases with history
-        matches = match_with_history(patient_id, detected_symptoms, top_k=5)
+        # In hybrid mode we need more candidates so that the combined (BERT+keyword) top diseases
+        # are present in the matcher output and can be re-ranked.
+        # Use a larger top_k in hybrid mode so BERT+keyword predicted diseases
+        # (even if they are not keyword-top-N) are present and can be re-ranked.
+        top_k_for_match = 50 if method_used == "hybrid" else 5
+        matches = match_with_history(patient_id, detected_symptoms, top_k=top_k_for_match)
+
+        # Step 6.1 — Hybrid scoring override (use combined BERT+keyword confidence)
+        # This keeps the downstream report structure (matched_symptoms/missing_critical)
+        # but ranks by the hybrid combined score.
+        if method_used == "hybrid" and predictions:
+            try:
+                from matcher import get_urgency_level
+
+                pred_map = {
+                    str(p["disease"]).strip().lower(): float(p["confidence"])
+                    for p in predictions
+                    if p and "disease" in p and "confidence" in p
+                }
+
+                for m in matches:
+                    key = str(m.get("disease", "")).strip().lower()
+                    if key in pred_map:
+                        new_score = pred_map[key] * 100.0
+                        m["score"] = round(float(new_score), 2)
+                        m["urgency"] = get_urgency_level(m["score"])
+
+                matches.sort(key=lambda x: x.get("score", 0.0), reverse=True)
+            except Exception:
+                # If override fails, keep original matcher ranking.
+                pass
 
         top = matches[0] if matches else {}
 
@@ -137,6 +170,7 @@ def diagnose(patient_id: str, user_text: str) -> dict:
             "top_score"         : top.get("score", 0.0),
             "urgency"           : top.get("urgency", "LOW"),
             "matched_symptoms"  : top.get("matched_symptoms", []),
+            "predictions"      : predictions,
             "report"            : report_str,
             "saved_path"        : saved_path,
             "status"            : "success",

@@ -21,28 +21,47 @@ const nextConfig = {
             {
                 protocol: 'https',
                 hostname: 'placehold.co',
-                port: '',
                 pathname: '/**',
             },
             {
                 protocol: 'https',
                 hostname: 'images.unsplash.com',
-                port: '',
                 pathname: '/**',
             },
             {
                 protocol: 'https',
                 hostname: 'picsum.photos',
-                port: '',
                 pathname: '/**',
             },
             {
                 protocol: 'https',
                 hostname: 'healthbridge-medical-reports.s3.eu-north-1.amazonaws.com',
-                port: '',
                 pathname: '/**',
             },
         ],
+    },
+    async rewrites() {
+        return [
+            {
+                // Socket.IO — WebRTC signaling (must be before /api/:path*)
+                source: '/socket.io/:path*',
+                destination: 'http://127.0.0.1:5000/socket.io/:path*',
+            },
+            {
+                // SSE live endpoint for ASHA — must come before generic /api/:path*
+                source: '/api/dashboard/asha/live',
+                destination: 'http://127.0.0.1:5000/api/dashboard/asha/live',
+            },
+            {
+                // SSE live endpoint for Citizen — must come before generic /api/:path*
+                source: '/api/dashboard/citizen/live',
+                destination: 'http://127.0.0.1:5000/api/dashboard/citizen/live',
+            },
+            {
+                source: '/api/:path*',
+                destination: 'http://127.0.0.1:5000/api/:path*',
+            },
+        ];
     },
 };
 

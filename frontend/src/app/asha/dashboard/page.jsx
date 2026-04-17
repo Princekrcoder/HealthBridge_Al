@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { fetchDashboardData } from "@/lib/api";
 import { MedicalLoader } from "@/components/ui/medical-loader";
@@ -37,11 +38,11 @@ import { useToast } from "@/hooks/use-toast";
 import { analyzeSymptoms as analyzeSymptomsForAsha } from "@/lib/analyze-client";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { useLanguage } from "@/hooks/useLanguage";
-import { API_BASE_URL } from "@/lib/config";
+import { API_BASE_URL, DIRECT_BACKEND_URL } from "@/lib/config";
 
-// 🔑 Authenticated fetch helper
-async function authFetch(url) {
-  const res = await fetch(url, {
+// 🔑 Authenticated fetch helper (relative URL via Next.js proxy)
+async function authFetch(path) {
+  const res = await fetch(path, {
     credentials: "include",
   });
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
@@ -137,7 +138,7 @@ const SummaryCard = ({ title, value, icon: Icon, subtext, onClick, isActive }) =
 /* ========================================
    🔹 PATIENT ACTIONS DROPDOWN
    ======================================== */
-const PatientActions = ({ patient, onViewDetails }) => (
+const PatientActions = ({ patient, onViewDetails, onStartScreening }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="ghost" className="h-8 w-8 p-0">
@@ -149,13 +150,15 @@ const PatientActions = ({ patient, onViewDetails }) => (
       <DropdownMenuItem onClick={() => onViewDetails(patient)}>
         View Details
       </DropdownMenuItem>
-      <DropdownMenuItem>Start Screening</DropdownMenuItem>
+      <DropdownMenuItem onClick={() => onStartScreening(patient)}>
+        📹 Start Screening
+      </DropdownMenuItem>
       <DropdownMenuItem>Refer to SC/PHC</DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 );
 
-const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQuery, citizens }) => {
+const AreaPatientList = ({ activeFilter, onViewDetails, onStartScreening, searchQuery, setSearchQuery, citizens }) => {
   const filteredPatients = useMemo(() => {
     let filtered = citizens || [];
 
@@ -275,7 +278,7 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
                     <Badge variant={riskColors[p.risk]}>{p.risk || "—"}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <PatientActions patient={p} onViewDetails={onViewDetails} />
+                    <PatientActions patient={p} onViewDetails={onViewDetails} onStartScreening={onStartScreening} />
                   </TableCell>
                 </TableRow>
               ))
@@ -299,7 +302,7 @@ const AreaPatientList = ({ activeFilter, onViewDetails, searchQuery, setSearchQu
                     <div className="font-bold">{p.name}</div>
                     <div className="text-sm text-muted-foreground">{p.email}</div>
                   </div>
-                  <PatientActions patient={p} onViewDetails={onViewDetails} />
+                  <PatientActions patient={p} onViewDetails={onViewDetails} onStartScreening={onStartScreening} />
                 </div>
                 <div className="my-2">
                   <Badge
@@ -523,7 +526,7 @@ const HighRiskAlerts = ({ citizens = [] }) => {
               >
                 <div>
                   <p className="font-bold text-red-900">{p.name}</p>
-                  <p className="text-sm text-red-700">{p.symptoms.join(", ")}</p>
+                  <p className="text-sm text-red-700">{Array.isArray(p.symptoms) ? p.symptoms.join(", ") : (p.latest_symptoms || p.symptoms || "—")}</p>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -632,7 +635,9 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange, citizenQueries, isL
     }
   }, [isOpen, citizenQueries]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!patient) return null;
+  if (!patient) {
+    return <Dialog open={false} onOpenChange={onOpenChange} />;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -690,7 +695,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange, citizenQueries, isL
                       <div key={index} className="p-3 bg-secondary rounded-md">
                         <p className="font-semibold">{visit.diagnosis}</p>
                         <p className="text-xs text-muted-foreground">{visit.date}</p>
-                        <p className="mt-1">Symptoms: {visit.symptoms.join(', ')}</p>
+                        <p className="mt-1">Symptoms: {Array.isArray(visit.symptoms) ? visit.symptoms.join(', ') : (visit.symptoms || "—")}</p>
                         <p>Notes: {visit.notes}</p>
                       </div>
                     ))
@@ -912,6 +917,7 @@ const PatientDetailModal = ({ patient, isOpen, onOpenChange, citizenQueries, isL
 export default function AshaDashboard() {
   // 🔒 Auth Guard
   useAuthGuard("asha");
+  const router = useRouter();
 
   // 📊 State Management
   const [activeFilter, setActiveFilter] = useState(null);
@@ -946,6 +952,11 @@ export default function AshaDashboard() {
       }
     } catch (error) {
       console.error("❌ Failed to fetch citizens:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load dashboard",
+        description: error.message || "An unknown error occurred while fetching citizens."
+      });
     } finally {
       setIsLoading(false);
     }
@@ -955,9 +966,13 @@ export default function AshaDashboard() {
   useEffect(() => {
     loadCitizens(false); // initial load
 
-    // Open SSE stream
+    // Open SSE stream directly to backend (bypasses Next.js proxy buffering)
+    const token = localStorage.getItem("healthbridge_token");
+    const sseUrl = token
+      ? `${DIRECT_BACKEND_URL}/api/dashboard/asha/live?token=${token}`
+      : `/api/dashboard/asha/live`;
     const evtSource = new EventSource(
-      `${API_BASE_URL}/api/dashboard/asha/live`,
+      sseUrl,
       { withCredentials: true }
     );
 
@@ -992,13 +1007,19 @@ export default function AshaDashboard() {
   };
 
   const handleViewDetails = useCallback(async (patient) => {
+    // ⚠️ Radix UI fix: DropdownMenu returns focus to trigger on close.
+    // Delay dialog open by one frame so Dropdown fully releases focus first.
     setSelectedPatient(patient);
     setCitizenQueries([]);
-    setIsDetailModalOpen(true);
     setIsLoadingQueries(true);
+
+    requestAnimationFrame(() => {
+      setIsDetailModalOpen(true);
+    });
+
     try {
       const data = await authFetch(
-        `${API_BASE_URL}/api/dashboard/asha/citizen/${patient.id}/queries`
+        `/api/dashboard/asha/citizen/${patient.id}/queries`
       );
       setCitizenQueries(data.queries || []);
     } catch (err) {
@@ -1012,6 +1033,33 @@ export default function AshaDashboard() {
       setIsLoadingQueries(false);
     }
   }, [toast]);
+
+  // 📹 Start Screening
+  const handleStartScreening = useCallback(async (patient) => {
+    try {
+      const res = await fetch("/api/screening/start", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: patient.id }),
+      });
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const { sessionId } = await res.json();
+      router.push(`/screening/${sessionId}`);
+    } catch (err) {
+      console.error("❌ Start screening failed:", err);
+      toast({
+        variant: "destructive",
+        title: "Could not start screening",
+        description: err.message || "Please try again.",
+      });
+    }
+  }, [router, toast]);
+
+  // ✅ Close handler — only hides the modal, never nulls patient (avoids race conditions)
+  const handleCloseModal = useCallback(() => {
+    setIsDetailModalOpen(false);
+  }, []);
 
   // 📈 Computed Stats
   const patientCounts = useMemo(() => ({
@@ -1082,6 +1130,7 @@ export default function AshaDashboard() {
               <AreaPatientList
                 activeFilter={activeFilter}
                 onViewDetails={handleViewDetails}
+                onStartScreening={handleStartScreening}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 citizens={citizens}
@@ -1103,7 +1152,7 @@ export default function AshaDashboard() {
       <PatientDetailModal
         patient={selectedPatient}
         isOpen={isDetailModalOpen}
-        onOpenChange={setIsDetailModalOpen}
+        onOpenChange={(open) => { if (!open) handleCloseModal(); }}
         citizenQueries={citizenQueries}
         isLoadingQueries={isLoadingQueries}
       />

@@ -1,5 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const pool = require("../db");
 
 const router = express.Router();
@@ -47,7 +48,14 @@ router.post("/login", async (req, res) => {
         return res.status(500).json({ message: "Session creation failed" });
       }
 
-      return res.json({ user: req.session.user });
+      // 5️⃣ Also issue a JWT for SSE/cross-origin use
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role, asha_id: user.asha_id },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      return res.json({ user: req.session.user, token });
     });
   } catch (err) {
     console.error("LOGIN ERROR:", err);

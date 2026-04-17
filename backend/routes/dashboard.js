@@ -2,7 +2,7 @@ const express = require("express");
 const pool = require("../db");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
-const { addClient } = require("../sseManager");
+const { addClient, addCitizenClient } = require("../sseManager");
 
 const router = express.Router();
 
@@ -23,10 +23,9 @@ router.get("/summary", authMiddleware, async (req, res) => {
     ]);
     const userName = userRes.rows[0]?.name || "User";
 
-    // 2. Get Last Check Date (from symptom_queries)
-    // Assuming 'created_at' is the timestamp
+    // 2. Get Last Check Date (from health_queries — actual queries table)
     const checkRes = await pool.query(
-      "SELECT created_at FROM symptom_queries WHERE citizen_id = $1 ORDER BY created_at DESC LIMIT 1",
+      "SELECT created_at FROM health_queries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1",
       [userId]
     );
 
@@ -224,6 +223,40 @@ router.get(
       console.error(err);
       res.status(500).json({ message: "Doctor dashboard error" });
     }
+  }
+);
+
+/**
+ * GET /api/dashboard/citizen/live
+ * Server-Sent Events stream — Citizen subscribes here.
+ * Fires when ASHA starts a screening session targeting this citizen.
+ */
+router.get(
+  "/citizen/live",
+  authMiddleware,
+  roleMiddleware("citizen"),
+  (req, res) => {
+    const citizenId = req.user.id;
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    // Initial heartbeat
+    res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+
+    const cleanup = addCitizenClient(citizenId, res);
+
+    const heartbeat = setInterval(() => {
+      try { res.write(": heartbeat\n\n"); } catch { clearInterval(heartbeat); }
+    }, 30_000);
+
+    req.on("close", () => {
+      clearInterval(heartbeat);
+      cleanup();
+    });
   }
 );
 

@@ -34,9 +34,11 @@ from sklearn.metrics import accuracy_score, f1_score
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 from datasets import Dataset
 
-# Setup paths relative to script location
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "data")
+# Setup paths relative to project root (training/)
+# NOTE: This script lives in `training/training_scripts/`, but the actual datasets are in `training/data/`.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)  # -> training/
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
 LAYER2_DIR = os.path.join(DATA_DIR, "layer2")
 
 print("--------------------------------")
@@ -46,7 +48,9 @@ print("--------------------------------\n")
 # 1. Load HuggingFace CSV data
 path_train = os.path.join(LAYER2_DIR, "symptom-disease-train-dataset.csv")
 path_test = os.path.join(LAYER2_DIR, "symptom-disease-test-dataset.csv")
-path_mappings = os.path.join(BASE_DIR, "label_encodings.json")
+# `label_encodings.json` is stored in unused_legacy/archive in this repo.
+# These IDs are used to map integer labels from the dataset CSVs into disease names.
+path_mappings = os.path.join(PROJECT_DIR, "unused_legacy", "label_encodings.json")
 
 df_train = pd.read_csv(path_train)
 df_test  = pd.read_csv(path_test)

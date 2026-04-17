@@ -6,10 +6,12 @@ require("dotenv").config();
 // ================================
 // 2️⃣ Imports
 // ================================
+const http    = require("http");
 const express = require("express");
-const cors = require("cors");
+const cors    = require("cors");
 const session = require("express-session");
 const connectPgSimple = require("connect-pg-simple");
+const { Server: SocketIOServer } = require("socket.io");
 const pool = require("./db");
 
 // Middleware imports
@@ -17,14 +19,17 @@ const authMiddleware = require("./middleware/authMiddleware");
 const roleMiddleware = require("./middleware/roleMiddleware");
 
 // Routes
-const authRoutes = require("./routes/auth");
-const dashboardRoutes = require("./routes/dashboard");
-const healthQueryRoutes = require("./routes/health-query"); // ✅ New Route
+const authRoutes        = require("./routes/auth");
+const dashboardRoutes   = require("./routes/dashboard");
+const healthQueryRoutes = require("./routes/health-query");
+const screeningRoutes   = require("./routes/screening");
 
 // ================================
 // 3️⃣ App initialize
 // ================================
-const app = express();
+const app    = express();
+let server = http.createServer(app);
+
 const PgSession = connectPgSimple(session);
 const isProduction = process.env.NODE_ENV === "production";
 const frontendOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "")
@@ -77,8 +82,9 @@ app.use(
 app.use("/api", authRoutes);
 
 // 🔹 Dashboard routes register
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/health-query", healthQueryRoutes); // ✅ Register new route
+app.use("/api/dashboard",   dashboardRoutes);
+app.use("/api/health-query", healthQueryRoutes);
+app.use("/api/screening",   screeningRoutes);
 
 // ================================
 // 6️⃣ Test route (DB check)
@@ -139,8 +145,55 @@ app.get(
 );
 
 // ================================
-// 8️⃣ Server listen (last line)
+// 8️⃣ Socket.IO — WebRTC Signaling
 // ================================
-app.listen(process.env.PORT, () => {
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: (origin, cb) => cb(null, true),
+    credentials: true,
+    methods: ["GET", "POST"],
+  },
+  path: "/socket.io",
+});
+
+io.on("connection", (socket) => {
+  console.log(`🔌 Socket connected: ${socket.id}`);
+
+  // Join a screening room
+  socket.on("join-room", ({ roomId, role }) => {
+    socket.join(roomId);
+    socket.to(roomId).emit("peer-joined", { role, socketId: socket.id });
+    console.log(`📡 ${role} joined room ${roomId}`);
+  });
+
+  // WebRTC offer (caller → callee)
+  socket.on("offer", ({ roomId, sdp }) => {
+    socket.to(roomId).emit("offer", { sdp, from: socket.id });
+  });
+
+  // WebRTC answer (callee → caller)
+  socket.on("answer", ({ roomId, sdp }) => {
+    socket.to(roomId).emit("answer", { sdp, from: socket.id });
+  });
+
+  // ICE candidate exchange
+  socket.on("ice-candidate", ({ roomId, candidate }) => {
+    socket.to(roomId).emit("ice-candidate", { candidate, from: socket.id });
+  });
+
+  // Call ended by ASHA
+  socket.on("call-ended", ({ roomId }) => {
+    socket.to(roomId).emit("call-ended");
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`🔌 Socket disconnected: ${socket.id}`);
+  });
+});
+
+// ================================
+// 9️⃣ Server listen (last line)
+// ================================
+server.listen(process.env.PORT, () => {
   console.log(`🚀 Server running on port ${process.env.PORT}`);
 });

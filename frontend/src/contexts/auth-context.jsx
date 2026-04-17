@@ -42,6 +42,11 @@ export function AuthProvider({ children }) {
       throw new Error(data.message || "Login failed");
     }
 
+    // Store JWT token for cross-origin SSE connections
+    if (data.token) {
+      localStorage.setItem("healthbridge_token", data.token);
+    }
+
     setUser(data.user);
     return data.user;
   }, []);
@@ -50,8 +55,17 @@ export function AuthProvider({ children }) {
     try {
       await apiFetch("/api/logout", { method: "POST" });
     } finally {
+      localStorage.removeItem("healthbridge_token");
       setUser(null);
     }
+  }, []);
+
+  // Helper to get the stored JWT token
+  const getToken = useCallback(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("healthbridge_token");
+    }
+    return null;
   }, []);
 
   const value = useMemo(
@@ -62,8 +76,9 @@ export function AuthProvider({ children }) {
       login,
       logout,
       refreshSession,
+      getToken,
     }),
-    [user, isLoading, login, logout, refreshSession]
+    [user, isLoading, login, logout, refreshSession, getToken]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

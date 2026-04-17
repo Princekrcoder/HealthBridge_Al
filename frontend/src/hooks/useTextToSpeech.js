@@ -55,8 +55,13 @@ export function useTextToSpeech() {
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => setIsSpeaking(false);
         utterance.onerror = (e) => {
-            // "interrupted" fires when speech is cancelled programmatically — not a real error
+            // "interrupted" or "canceled" fires when speech is cancelled programmatically
             if (e.error === "interrupted" || e.error === "canceled") {
+                setIsSpeaking(false);
+                return;
+            }
+            if (e.error === "synthesis-failed") {
+                console.warn("TTS Warning: synthesis dropped (usually a harmless browser audio bug).");
                 setIsSpeaking(false);
                 return;
             }

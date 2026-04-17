@@ -325,33 +325,31 @@ def predict_with_translation(text: str) -> dict:
         except:
             duration = -1
 
-    # Step 6: Method selection based on confidence
+    # Step 6: Method selection + hybrid ranking (shared logic in nlp_predictor)
     bert_conf = bert_result.get("confidence", 0.0)
     bert_disease = bert_result.get("top_disease")
 
-    if bert_conf >= BERT_HIGH_CONFIDENCE:
-        method = "bert_translated" if grok_used else "bert"
-        # Use disease profile symptoms
-        try:
-            from nlp_predictor import get_disease_symptoms
-            profile_syms = get_disease_symptoms(bert_disease)
-            if profile_syms:
-                detected_symptoms = profile_syms
-            else:
-                detected_symptoms = keyword_symptoms
-        except:
-            detected_symptoms = keyword_symptoms
+    try:
+        from nlp_predictor import decide_and_build_hybrid_output
 
-    elif bert_conf >= BERT_MID_CONFIDENCE:
-        method = "hybrid_translated" if grok_used else "hybrid"
-        detected_symptoms = keyword_symptoms
-
-    else:
+        decided = decide_and_build_hybrid_output(
+            bert_top5=bert_result.get("top_5", []),
+            keyword_symptoms=keyword_symptoms,
+        )
+        method = decided["method"]
+        predictions = decided["predictions"]
+        detected_symptoms = decided["detected_symptoms"]
+        source = decided.get("source", "")
+    except Exception:
+        # Hard fallback: keep previous behavior if hybrid helper fails.
         method = "keyword_fallback"
+        predictions = []
         detected_symptoms = keyword_symptoms
+        source = "keyword_fallback"
 
     return {
         "method": method,
+        "predictions": predictions,
         "original_text": text,
         "detected_language": source_lang,
         "translated_text": translated_text,
@@ -362,6 +360,7 @@ def predict_with_translation(text: str) -> dict:
         "top_5": bert_result.get("top_5", []),
         "grok_used": grok_used,
         "duration_days": duration,
+        "source": source,
     }
 
 
